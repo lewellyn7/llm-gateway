@@ -1,21 +1,23 @@
-# LLM Gateway - 智能路由网关
+# LLM Gateway
 
-> 企业级 OpenAI 兼容 API 网关，支持多 Provider 接入
+> 企业级 OpenAI 兼容 API 网关 | Enterprise-grade OpenAI-compatible API Gateway
 
-[English](README.md) | 中文
+**语言:** [English](README.md) | [中文](README_CN.md)
 
-## 功能特性
+---
 
-- 🌐 **多 Provider 支持** - OpenAI、Claude、vLLM 等
-- 🔄 **智能路由** - 支持成本、延迟、质量、均衡四种策略
-- 📊 **多租户** - 租户管理、配额控制、API Key 管理
-- 💰 **Token 计费** - 用量追踪、成本计算
-- 🚦 **限流** - Redis 滑动窗口限流
-- 📝 **异步日志** - Kafka 事件流
-- 🔌 **OpenAI 兼容** - OpenAI API 完全兼容，可直接替换
+## 特性
+
+- 🌐 **多 Provider** - OpenAI、Claude、vLLM 等
+- 🔄 **智能路由** - 支持成本、延迟、质量、均衡策略
+- 📊 **多租户** - 租户管理、配额和 API Key
+- 💰 **Token 计费** - 用量追踪和成本计算
+- 🚦 **限流** - 基于 Redis 的滑动窗口限流
+- 📝 **异步日志** - 基于 Kafka 的事件流
+- 🔌 **OpenAI 兼容** - 完全兼容 OpenAI API
 - 🛡️ **中间件** - 认证、用量追踪、请求追踪
-- 🔧 **工具调用** - 可扩展的函数调用
-- 📊 **管理后台** - Vue 3 + Tailwind CSS 仪表盘
+- 🔧 **Tool Calling** - 可扩展的函数调用
+- 📊 **管理后台** - Vue 3 + Tailwind CSS
 
 ## 快速开始
 
@@ -26,7 +28,7 @@ cd llm-gateway
 
 # 配置
 cp .env.example .env
-# 编辑 .env 添加你的 API Keys
+# 编辑 .env 填入你的 API Keys
 
 # 启动
 docker-compose up -d
@@ -42,38 +44,38 @@ curl http://localhost:28000/health
 curl -X POST http://localhost:28000/v1/chat/completions \
   -H "Authorization: Bearer sk-your-key" \
   -H "Content-Type: application/json" \
-  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "你好"}]}'
+  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Hello"}]}'
 
-# 模型列表
+# 列出模型
 curl http://localhost:28000/v1/models \
   -H "Authorization: Bearer sk-your-key"
 
-# 向量嵌入
+# Embeddings
 curl -X POST http://localhost:28000/v1/embeddings \
   -H "Authorization: Bearer sk-your-key" \
   -H "Content-Type: application/json" \
-  -d '{"input": "你好世界", "model": "text-embedding-3-small"}'
+  -d '{"input": "Hello world", "model": "text-embedding-3-small"}'
 ```
 
-## 系统架构
+## 架构
 
 ```
 ┌───────────────┐
-│    客户端     │
+│   Clients     │
 └───────┬───────┘
         ↓
 ┌───────────────────┐
-│   API 网关        │
-│   (FastAPI)       │
+│  API Gateway      │
+│  (FastAPI)        │
 └────┬────────┬─────┘
      ↓        ↓
 ┌─────────┐ ┌──────────────┐
-│ 认证    │ │ 路由引擎     │
-│ 中间件   │ │              │
+│ Auth    │ │ Router       │
+│ Middleware│ │ Engine       │
 └────┬────┘ └──────┬───────┘
      ↓        ↓
 ┌─────────────┐ ┌─────────────────┐
-│ PostgreSQL │ │ LLM Providers    │
+│ PostgreSQL │ │ LLM Providers   │
 │ Redis     │ │ OpenAI/Claude  │
 │ Kafka     │ │ vLLM           │
 └─────────────┘ └─────────────────┘
@@ -89,12 +91,12 @@ curl -X POST http://localhost:28000/v1/embeddings \
 
 ## 路由策略
 
-- **balanced** - 均衡策略 (默认)
-- **cost** - 成本优先
-- **latency** - 延迟优先
-- **quality** - 质量优先
+- **balanced** - 均衡成本和质量（默认）
+- **cost** - 优先选择最低成本
+- **latency** - 优先选择最低延迟
+- **quality** - 优先选择最高质量
 
-## 工具调用
+## Tool Calling
 
 ```bash
 # 列出可用工具
@@ -105,31 +107,25 @@ curl http://localhost:28000/api/tools/list \
 curl -X POST http://localhost:28000/api/tools/call \
   -H "Authorization: Bearer sk-your-key" \
   -H "Content-Type: application/json" \
-  -d '{"tool_calls": [{"name": "get_weather", "arguments": {"location": "北京"}}]}'
+  -d '{"tool_calls": [{"name": "get_weather", "arguments": {"location": "Beijing"}}]}'
 ```
-
-内置工具：
-- `get_weather` - 获取天气
-- `search_web` - 网页搜索
-- `calculate` - 数学计算
-- `get_current_time` - 获取当前时间
 
 ## 管理后台
 
-访问 `/admin` (默认账号: admin/admin)
+访问 `/admin`（默认账号: admin/admin）
 
 - 🏢 租户管理
-- 🔑 API Key 生成与撤销
+- 🔑 API Key 生成
 - 📊 用量统计
 - ⚙️ 系统设置
 
 ## 环境变量
 
-| 变量 | 默认值 | 说明 |
+| 变量 | 默认值 | 描述 |
 |------|--------|------|
 | `DATABASE_URL` | postgresql+asyncpg://... | PostgreSQL 连接 |
 | `REDIS_URL` | redis://localhost:6379/0 | Redis 连接 |
-| `KAFKA_BOOTSTRAP_SERVERS` | localhost:9092 | Kafka 服务器 |
+| `KAFKA_BOOTSTRAP_SERVERS` | localhost:9092 | Kafka brokers |
 | `OPENAI_API_KEY` | - | OpenAI API Key |
 | `ANTHROPIC_API_KEY` | - | Anthropic API Key |
 | `VLLM_ENDPOINT` | - | vLLM 端点 |
@@ -158,9 +154,22 @@ docker build -t llm-gateway:latest .
 docker run -d -p 28000:8000 --env-file .env llm-gateway:latest
 ```
 
+## Docker Compose
+
+```bash
+# 启动全部服务
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f app
+
+# 停止
+docker-compose down
+```
+
 ## CI/CD
 
-GitHub Actions 流水线：
+GitHub Actions 流水线:
 1. Lint (ruff)
 2. Test (pytest)
 3. Build (Docker)
@@ -177,9 +186,9 @@ llm-gateway/
 │   ├── services/        # 路由、计费、工具
 │   ├── db/              # 会话、模型、CRUD
 │   ├── middleware/      # 认证、用量、追踪
-│   ├── schemas/         # Pydantic 模型
+│   ├── schemas/         # Pydantic schemas
 │   ├── providers/        # LLM 客户端
-│   └── templates/        # 管理后台
+│   └── templates/        # 管理后台 UI
 ├── .github/workflows/    # CI/CD
 ├── docker-compose.yml
 ├── Dockerfile
