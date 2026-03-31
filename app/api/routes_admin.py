@@ -1,14 +1,10 @@
 """Admin routes for dashboard."""
-from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime, timedelta
 
-from app.core.security import verify_api_key, create_access_token
-from app.db.crud import get_tenant_usage
-from app.core.config import settings
+from app.core.security import create_access_token
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")

@@ -1,10 +1,9 @@
 """
 Tool Calling Service - Function calling support
 """
-import json
 import asyncio
-from typing import Any, Callable, Awaitable, Optional
-from dataclasses import dataclass, field
+from typing import Any, Callable, Awaitable
+from dataclasses import dataclass
 from enum import Enum
 
 

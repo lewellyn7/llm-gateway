@@ -18,7 +18,7 @@ async def create_tenant(db: AsyncSession, name: str, email: str, hashed_password
 
 
 async def get_api_key_by_hash(db: AsyncSession, key_hash: str) -> APIKey | None:
-    result = await db.execute(select(APIKey).where(APIKey.key_hash == key_hash, APIKey.is_active == True))
+    result = await db.execute(select(APIKey).where(APIKey.key_hash == key_hash, APIKey.is_active))
     return result.scalar_one_or_none()
 
 

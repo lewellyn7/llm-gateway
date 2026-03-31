@@ -1,9 +1,10 @@
 """Configuration settings."""
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
     APP_NAME: str = "LLM Gateway"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
@@ -37,7 +38,6 @@ class Settings(BaseSettings):
         "vllm": {"local": 0.001},
     }
 
-    class Config:
         env_file = ".env"
         case_sensitive = True
 

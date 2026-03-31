@@ -2,9 +2,8 @@
 import time
 import uuid
 import json
-from fastapi import APIRouter, Depends, Request, Header
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
-from typing import Optional
 
 from app.schemas.llm import ChatCompletionRequest, ModelList, ModelInfo
 from app.services.llm_router import LLMRouter

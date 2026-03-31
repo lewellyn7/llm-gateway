@@ -1,8 +1,6 @@
 """
 Router Engine - Advanced routing with orchestrator
 """
-import time
-from typing import AsyncIterator, Optional
 from app.providers import OpenAIClient, ClaudeClient, VLLMClient
 from app.services.orchestrator import Orchestrator, PolicyEngine, AgentResult
 from app.core.config import settings

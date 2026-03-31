@@ -57,7 +57,7 @@ async def create_embeddings(
             usage=response.get("usage", {}),
         )
 
-    except Exception as e:
+    except Exception:
         return EmbeddingResponse(
             object="list",
             data=[],

@@ -1,7 +1,7 @@
 """Tools routes for function calling."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-from typing import Any, Union, List
+from typing import Any, List
 
 from app.core.security import verify_api_key
 from app.services.tools import tool_registry

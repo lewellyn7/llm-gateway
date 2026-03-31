@@ -1,5 +1,4 @@
 """Media service for multimodal requests."""
-from typing import Optional
 
 
 class MediaService:

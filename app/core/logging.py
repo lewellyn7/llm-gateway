@@ -1,7 +1,6 @@
 """Structured logging with Kafka."""
 import json
 from datetime import datetime
-from typing import Any
 from app.core.kafka import kafka_producer
 
 

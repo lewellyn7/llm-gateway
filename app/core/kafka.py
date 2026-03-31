@@ -1,7 +1,6 @@
 """Kafka producer for async logging."""
 import json
 from datetime import datetime
-from typing import Any
 from aiokafka import AIOKafkaProducer
 from app.core.config import settings
 
