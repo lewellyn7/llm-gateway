@@ -31,7 +31,7 @@ cp .env.example .env
 # Edit .env with your API keys
 
 # Start
-docker-compose up -d
+cd docker && docker-compose up -d
 
 # Test
 curl http://localhost:28000/health
@@ -148,23 +148,23 @@ uvicorn app.main:app --reload --port 8000
 
 ```bash
 # Build
-docker build -t llm-gateway:latest .
+cd docker && docker build -t llm-gateway:latest .
 
 # Run
-docker run -d -p 28000:8000 --env-file .env llm-gateway:latest
+docker run -d -p 28000:8000 --env-file ../.env llm-gateway:latest
 ```
 
 ## Docker Compose
 
 ```bash
 # Start all services
-docker-compose up -d
+cd docker && docker-compose up -d
 
 # View logs
-docker-compose logs -f app
+cd docker && docker-compose logs -f app
 
 # Stop
-docker-compose down
+cd docker && docker-compose down
 ```
 
 ## CI/CD

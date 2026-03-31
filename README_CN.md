@@ -31,7 +31,7 @@ cp .env.example .env
 # 编辑 .env 填入你的 API Keys
 
 # 启动
-docker-compose up -d
+cd docker && docker-compose up -d
 
 # 测试
 curl http://localhost:28000/health
@@ -148,20 +148,20 @@ uvicorn app.main:app --reload --port 8000
 
 ```bash
 # 构建
-docker build -t llm-gateway:latest .
+cd docker && docker build -t llm-gateway:latest .
 
 # 运行
-docker run -d -p 28000:8000 --env-file .env llm-gateway:latest
+docker run -d -p 28000:8000 --env-file ../.env llm-gateway:latest
 ```
 
 ## Docker Compose
 
 ```bash
 # 启动全部服务
-docker-compose up -d
+cd docker && docker-compose up -d
 
 # 查看日志
-docker-compose logs -f app
+cd docker && docker-compose logs -f app
 
 # 停止
 docker-compose down
