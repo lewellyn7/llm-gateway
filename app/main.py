@@ -7,11 +7,14 @@ from app.core.config import settings
 from app.core.kafka import kafka_producer
 from app.core.limiter import rate_limiter
 from app.middleware import AuthMiddleware, UsageMiddleware, TraceMiddleware
+
+# API routes
 from app.api.routes_llm import router as llm_router
 from app.api.routes_claude import router as claude_router
 from app.api.routes_tools import router as tools_router
 from app.api.routes_media import router as media_router
 from app.api.routes_embeddings import router as embeddings_router
+from app.api.routes_admin import router as admin_router
 
 
 @asynccontextmanager
@@ -41,17 +44,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Custom middleware (order matters - last added is first executed)
+# Custom middleware
 app.add_middleware(TraceMiddleware)
 app.add_middleware(UsageMiddleware)
 app.add_middleware(AuthMiddleware)
 
-# Routes
+# Routes - API
 app.include_router(llm_router, prefix="/v1")
 app.include_router(claude_router)
 app.include_router(tools_router, prefix="/api")
 app.include_router(media_router, prefix="/api")
 app.include_router(embeddings_router, prefix="/v1")
+
+# Routes - Admin
+app.include_router(admin_router)
 
 
 @app.get("/health")
