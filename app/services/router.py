@@ -1,31 +1,38 @@
 """
-LLM Router Service - Smart routing with fallback
+LLM Router Service - Smart routing with fallback using Orchestrator
 """
-import asyncio
 from typing import AsyncIterator, Optional
 from app.core.config import settings
+from app.services.orchestrator import Orchestrator, PolicyEngine, State
 
 
 class LLMRouter:
     """
-    Intelligent LLM Router.
+    Intelligent LLM Router using Orchestrator pattern.
     
-    Supports strategies:
-    - free → vLLM (cheapest)
-    - pro → Claude (balanced)
-    - enterprise → OpenAI (best quality)
-    - cost → cheapest available
-    - speed → fastest responding
-    - latency-aware → weighted by latency
+    Strategies:
+    - cost_aware → vLLM (cheapest)
+    - latency_aware → fastest
+    - quality_aware → Claude
+    - balanced → OpenAI
     """
 
-    def __init__(self):
-        self.providers = {
-            "openai": OpenAIProvider(),
-            "claude": ClaudeProvider(),
-            "vllm": VLLMProvider(),
-        }
-        self.fallback_chain = ["vllm", "claude", "openai"]
+    def __init__(self, strategy: str = "balanced"):
+        self.strategy = strategy
+        self.policy_engine = PolicyEngine(strategy=strategy)
+        self.orchestrator = Orchestrator(
+            policy_engine=self.policy_engine,
+            max_iterations=5,
+        )
+        
+        # Register provider agents
+        self._register_agents()
+
+    def _register_agents(self):
+        """Register LLM provider agents."""
+        self.orchestrator.register_agent("openai", self._call_openai)
+        self.orchestrator.register_agent("claude", self._call_claude)
+        self.orchestrator.register_agent("vllm", self._call_vllm)
 
     async def route(
         self,
@@ -36,32 +43,31 @@ class LLMRouter:
         tenant_id: int | None = None,
         strategy: str = "auto",
     ) -> dict:
-        """
-        Route request to appropriate provider.
-        Falls back to next provider on error.
-        """
+        """Route request to appropriate provider with orchestrator."""
         # Determine provider based on model prefix
-        provider = self._get_provider_for_model(model)
+        primary_provider = self._get_provider_for_model(model)
         
-        # Execute with fallback
-        last_error = None
-        providers_to_try = self._get_provider_order(provider, strategy)
+        # Create initial state
+        state = State(
+            available_providers=["vllm", "claude", "openai"],
+            current_provider=primary_provider,
+            max_attempts=3,
+            metadata={
+                "model": model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "tenant_id": tenant_id,
+            },
+        )
+
+        # Run orchestrator
+        result_state = await self.orchestrator.run(state)
         
-        for p in providers_to_try:
-            try:
-                response = await self.providers[p].complete(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                )
-                return response
-            except Exception as e:
-                last_error = e
-                continue
+        if result_state.error:
+            raise Exception(f"Router failed: {result_state.error}")
         
-        # All providers failed
-        raise Exception(f"All providers failed. Last error: {last_error}")
+        return result_state.result
 
     async def route_stream(
         self,
@@ -72,70 +78,65 @@ class LLMRouter:
         tenant_id: int | None = None,
         strategy: str = "auto",
     ) -> AsyncIterator[str]:
-        """Stream response with fallback."""
-        provider = self._get_provider_for_model(model)
+        """Stream response with orchestrator routing."""
+        primary_provider = self._get_provider_for_model(model)
         
-        providers_to_try = self._get_provider_order(provider, strategy)
+        state = State(
+            available_providers=["vllm", "claude", "openai"],
+            current_provider=primary_provider,
+            max_attempts=3,
+            metadata={
+                "model": model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "tenant_id": tenant_id,
+            },
+        )
+
+        # Stream with fallback
+        async for chunk in self._stream_with_fallback(state):
+            yield chunk
+
+    async def _stream_with_fallback(self, state: State) -> AsyncIterator[str]:
+        """Stream with automatic fallback on error."""
+        providers = state.available_providers
+        current_idx = 0
         
-        for p in providers_to_try:
+        while current_idx < len(providers):
+            provider = providers[current_idx]
+            state.update(current_provider=provider)
+            
             try:
-                async for chunk in self.providers[p].complete_stream(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                ):
+                async for chunk in self._stream_provider(provider, state):
                     yield chunk
-                return  # Successfully streamed
+                return  # Success
             except Exception as e:
+                current_idx += 1
                 continue
         
-        yield f'{{"error": "All providers failed"}}'
+        yield '{"error": "All providers failed"}'
 
-    def _get_provider_for_model(self, model: str) -> str:
-        """Map model to provider."""
-        if model.startswith("gpt") or model.startswith("o1"):
-            return "openai"
-        elif model.startswith("claude"):
-            return "claude"
-        else:
-            return "vllm"  # default to local vLLM
+    async def _stream_provider(self, provider: str, state: State) -> AsyncIterator[str]:
+        """Stream from a specific provider."""
+        if provider == "openai":
+            async for chunk in self._call_openai_stream(state):
+                yield chunk
+        elif provider == "claude":
+            async for chunk in self._call_claude_stream(state):
+                yield chunk
+        elif provider == "vllm":
+            async for chunk in self._call_vllm_stream(state):
+                yield chunk
 
-    def _get_provider_order(self, primary: str, strategy: str) -> list:
-        """Get provider order based on strategy."""
-        chain = self.fallback_chain.copy()
-        
-        # Move primary to front
-        if primary in chain:
-            chain.remove(primary)
-            chain.insert(0, primary)
-        
-        if strategy == "cost":
-            # Cheapest first
-            return ["vllm", "claude", "openai"]
-        elif strategy == "speed":
-            # Fastest first (would need real latency data)
-            return ["vllm", "openai", "claude"]
-        
-        return chain
-
-
-class OpenAIProvider:
-    """OpenAI provider wrapper."""
-
-    async def complete(
-        self,
-        model: str,
-        messages: list,
-        temperature: float,
-        max_tokens: int | None,
-    ) -> dict:
+    async def _call_openai(self, state: State, **kwargs) -> dict:
         """Call OpenAI API."""
         import httpx
         
         if not settings.OPENAI_API_KEY:
             raise Exception("OpenAI API key not configured")
         
+        metadata = state.metadata
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 "https://api.openai.com/v1/chat/completions",
@@ -144,10 +145,10 @@ class OpenAIProvider:
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": model,
-                    "messages": messages,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
+                    "model": metadata["model"],
+                    "messages": metadata["messages"],
+                    "temperature": metadata.get("temperature", 1.0),
+                    "max_tokens": metadata.get("max_tokens"),
                 },
                 timeout=60.0,
             )
@@ -157,13 +158,10 @@ class OpenAIProvider:
             
             return response.json()
 
-    async def complete_stream(self, model: str, messages: list, temperature: float, max_tokens: int | None) -> AsyncIterator[str]:
+    async def _call_openai_stream(self, state: State) -> AsyncIterator[str]:
         """Stream from OpenAI."""
         import httpx
-        import json
-        
-        if not settings.OPENAI_API_KEY:
-            raise Exception("OpenAI API key not configured")
+        metadata = state.metadata
         
         async with httpx.AsyncClient() as client:
             async with client.stream(
@@ -174,10 +172,10 @@ class OpenAIProvider:
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": model,
-                    "messages": messages,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
+                    "model": metadata["model"],
+                    "messages": metadata["messages"],
+                    "temperature": metadata.get("temperature", 1.0),
+                    "max_tokens": metadata.get("max_tokens"),
                     "stream": True,
                 },
                 timeout=60.0,
@@ -188,38 +186,79 @@ class OpenAIProvider:
                         if data != "[DONE]":
                             yield data
 
-
-class ClaudeProvider:
-    """Claude provider wrapper."""
-
-    async def complete(self, model: str, messages: list, temperature: float, max_tokens: int | None) -> dict:
+    async def _call_claude(self, state: State, **kwargs) -> dict:
         """Call Claude API."""
-        raise NotImplementedError("Claude provider not yet implemented")
+        import httpx
+        
+        if not settings.ANTHROPIC_API_KEY:
+            raise Exception("Claude API key not configured")
+        
+        metadata = state.metadata
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": settings.ANTHROPIC_API_KEY,
+                    "anthropic-version": "2023-06-01",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": metadata["model"],
+                    "messages": metadata["messages"],
+                    "temperature": metadata.get("temperature", 1.0),
+                    "max_tokens": metadata.get("max_tokens", 1024),
+                },
+                timeout=60.0,
+            )
+            
+            if response.status_code != 200:
+                raise Exception(f"Claude API error: {response.text}")
+            
+            result = response.json()
+            # Convert Claude format to OpenAI format
+            return {
+                "id": f"claude-{result.get('id', '')}",
+                "object": "chat.completion",
+                "created": 1677610602,
+                "model": result.get("model", metadata["model"]),
+                "choices": [{
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": result.get("content", [{}])[0].get("text", ""),
+                    },
+                    "finish_reason": "stop",
+                }],
+                "usage": {
+                    "prompt_tokens": result.get("usage", {}).get("input_tokens", 0),
+                    "completion_tokens": result.get("usage", {}).get("output_tokens", 0),
+                    "total_tokens": sum(result.get("usage", {}).values()),
+                },
+            }
 
-    async def complete_stream(self, model: str, messages: list, temperature: float, max_tokens: int | None) -> AsyncIterator[str]:
-        """Stream from Claude."""
-        raise NotImplementedError("Claude streaming not yet implemented")
+    async def _call_claude_stream(self, state: State) -> AsyncIterator[str]:
+        """Stream from Claude (placeholder - Claude doesn't support streaming yet)."""
+        # Claude API doesn't support streaming in the same way
+        # Would need to implement chunked response
+        raise Exception("Claude streaming not yet supported")
 
-
-class VLLMProvider:
-    """vLLM provider wrapper for local models."""
-
-    async def complete(self, model: str, messages: list, temperature: float, max_tokens: int | None) -> dict:
+    async def _call_vllm(self, state: State, **kwargs) -> dict:
         """Call vLLM API."""
         import httpx
         
         if not settings.VLLM_ENDPOINT:
             raise Exception("vLLM endpoint not configured")
         
+        metadata = state.metadata
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{settings.VLLM_ENDPOINT}/v1/chat/completions",
                 headers={"Content-Type": "application/json"},
                 json={
-                    "model": model,
-                    "messages": messages,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens or 2048,
+                    "model": metadata["model"],
+                    "messages": metadata["messages"],
+                    "temperature": metadata.get("temperature", 1.0),
+                    "max_tokens": metadata.get("max_tokens") or 2048,
                 },
                 timeout=60.0,
             )
@@ -229,13 +268,10 @@ class VLLMProvider:
             
             return response.json()
 
-    async def complete_stream(self, model: str, messages: list, temperature: float, max_tokens: int | None) -> AsyncIterator[str]:
+    async def _call_vllm_stream(self, state: State) -> AsyncIterator[str]:
         """Stream from vLLM."""
         import httpx
-        import json
-        
-        if not settings.VLLM_ENDPOINT:
-            raise Exception("vLLM endpoint not configured")
+        metadata = state.metadata
         
         async with httpx.AsyncClient() as client:
             async with client.stream(
@@ -243,10 +279,10 @@ class VLLMProvider:
                 f"{settings.VLLM_ENDPOINT}/v1/chat/completions",
                 headers={"Content-Type": "application/json"},
                 json={
-                    "model": model,
-                    "messages": messages,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens or 2048,
+                    "model": metadata["model"],
+                    "messages": metadata["messages"],
+                    "temperature": metadata.get("temperature", 1.0),
+                    "max_tokens": metadata.get("max_tokens") or 2048,
                     "stream": True,
                 },
                 timeout=60.0,
@@ -256,3 +292,12 @@ class VLLMProvider:
                         data = line[6:]
                         if data != "[DONE]":
                             yield data
+
+    def _get_provider_for_model(self, model: str) -> str:
+        """Map model to provider."""
+        if model.startswith("gpt") or model.startswith("o1"):
+            return "openai"
+        elif model.startswith("claude"):
+            return "claude"
+        else:
+            return "vllm"
