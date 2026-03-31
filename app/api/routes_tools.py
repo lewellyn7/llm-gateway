@@ -1,4 +1,5 @@
 """Tools routes for function calling."""
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from typing import Any, List
@@ -13,19 +14,23 @@ router = APIRouter()
 # Schemas
 # =============================================================================
 
+
 class FunctionCall(BaseModel):
     """A single function call."""
+
     name: str
     arguments: dict = Field(default_factory=dict)
 
 
 class ToolCallRequest(BaseModel):
     """Request to call tools."""
+
     tool_calls: List[FunctionCall]
 
 
 class ToolCallResult(BaseModel):
     """Result of a single tool call."""
+
     name: str
     output: Any = None
     error: str | None = None
@@ -33,18 +38,21 @@ class ToolCallResult(BaseModel):
 
 class ToolListItem(BaseModel):
     """A tool in the list."""
+
     type: str = "function"
     function: dict
 
 
 class ToolListResponse(BaseModel):
     """Response listing available tools."""
+
     tools: List[ToolListItem]
 
 
 # =============================================================================
 # Routes
 # =============================================================================
+
 
 @router.post("/tools/call", response_model=dict)
 async def call_tools(
@@ -53,7 +61,7 @@ async def call_tools(
 ):
     """
     Call one or more tools.
-    
+
     Example:
     {
         "tool_calls": [
@@ -67,25 +75,31 @@ async def call_tools(
     for call in request.tool_calls:
         tool = tool_registry.get(call.name)
         if not tool:
-            results.append(ToolCallResult(
-                name=call.name,
-                output=None,
-                error=f"Tool {call.name} not found",
-            ))
+            results.append(
+                ToolCallResult(
+                    name=call.name,
+                    output=None,
+                    error=f"Tool {call.name} not found",
+                )
+            )
             continue
 
         try:
             output = await tool.handler(**call.arguments)
-            results.append(ToolCallResult(
-                name=call.name,
-                output=output,
-            ))
+            results.append(
+                ToolCallResult(
+                    name=call.name,
+                    output=output,
+                )
+            )
         except Exception as e:
-            results.append(ToolCallResult(
-                name=call.name,
-                output=None,
-                error=str(e),
-            ))
+            results.append(
+                ToolCallResult(
+                    name=call.name,
+                    output=None,
+                    error=str(e),
+                )
+            )
 
     return {
         "results": [
@@ -130,7 +144,11 @@ async def call_tools_parallel(
     async def call_one(call: FunctionCall):
         tool = tool_registry.get(call.name)
         if not tool:
-            return {"name": call.name, "output": None, "error": f"Tool {call.name} not found"}
+            return {
+                "name": call.name,
+                "output": None,
+                "error": f"Tool {call.name} not found",
+            }
         try:
             output = await tool.handler(**call.arguments)
             return {"name": call.name, "output": output}

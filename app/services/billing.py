@@ -1,4 +1,5 @@
 """Billing service."""
+
 from app.core.config import settings
 
 

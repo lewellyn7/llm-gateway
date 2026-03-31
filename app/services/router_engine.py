@@ -1,6 +1,7 @@
 """
 Router Engine - Advanced routing with orchestrator
 """
+
 from app.providers import OpenAIClient, ClaudeClient, VLLMClient
 from app.services.orchestrator import Orchestrator, PolicyEngine, AgentResult
 from app.core.config import settings
@@ -9,7 +10,7 @@ from app.core.config import settings
 class RouterEngine:
     """
     Advanced LLM Router with Orchestrator integration.
-    
+
     Features:
     - Multi-provider with fallback
     - Strategy-based routing (cost/latency/quality/balanced)
@@ -45,6 +46,7 @@ class RouterEngine:
 
     def _create_agent(self, name: str, client):
         """Create an agent for a provider."""
+
         async def agent(context: dict) -> AgentResult:
             try:
                 if name == "openai":
@@ -140,22 +142,28 @@ class RouterEngine:
         for p in providers:
             try:
                 client = self.providers[p]
-                
+
                 if p == "openai":
                     response = await client.chat_completions(
-                        model=model, messages=messages,
-                        temperature=temperature, max_tokens=max_tokens,
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
                     )
                 elif p == "claude":
                     response = await client.messages(
-                        model=model, messages=self._convert_to_claude(messages),
-                        temperature=temperature, max_tokens=max_tokens or 1024,
+                        model=model,
+                        messages=self._convert_to_claude(messages),
+                        temperature=temperature,
+                        max_tokens=max_tokens or 1024,
                     )
                     response = client.to_openai_format(response)
                 elif p == "vllm":
                     response = await client.chat_completions(
-                        model=model, messages=messages,
-                        temperature=temperature, max_tokens=max_tokens or 2048,
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens or 2048,
                     )
 
                 return response, p
@@ -189,15 +197,16 @@ class RouterEngine:
         for msg in messages:
             role = msg.get("role", "user")
             if role == "system":
-                claude_messages.append({
-                    "role": "user",
-                    "content": f"[System] {msg.get('content', '')}"
-                })
+                claude_messages.append(
+                    {"role": "user", "content": f"[System] {msg.get('content', '')}"}
+                )
             else:
-                claude_messages.append({
-                    "role": "user" if role == "user" else "assistant",
-                    "content": msg.get("content", ""),
-                })
+                claude_messages.append(
+                    {
+                        "role": "user" if role == "user" else "assistant",
+                        "content": msg.get("content", ""),
+                    }
+                )
         return claude_messages
 
     def _calculate_cost(self, model: str, usage: dict) -> float:

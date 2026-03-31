@@ -1,4 +1,5 @@
 """LLM Gateway - Main FastAPI Application."""
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -88,5 +89,6 @@ async def root():
 async def capabilities():
     """Get gateway capabilities."""
     from app.services.llm_router import LLMRouter
+
     router = LLMRouter()
     return router.get_capabilities()

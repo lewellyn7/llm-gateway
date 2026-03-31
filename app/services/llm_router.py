@@ -1,4 +1,5 @@
 """LLM Router - Smart routing with fallback (Phase 3)."""
+
 import json
 from typing import AsyncIterator
 from app.services.router_engine import RouterEngine
@@ -11,7 +12,7 @@ from app.core.config import settings
 class LLMRouter:
     """
     LLM Router - Phase 3 with Orchestrator.
-    
+
     Features:
     - Multi-provider (OpenAI, Claude, vLLM)
     - Fallback chain
@@ -67,11 +68,17 @@ class LLMRouter:
         chain = [p for p in chain if p in self.providers]
 
         if self.strategy == "cost":
-            return sorted(chain, key=lambda p: {"vllm": 1, "claude": 2, "openai": 3}.get(p, 99))
+            return sorted(
+                chain, key=lambda p: {"vllm": 1, "claude": 2, "openai": 3}.get(p, 99)
+            )
         elif self.strategy == "latency":
-            return sorted(chain, key=lambda p: {"vllm": 1, "openai": 2, "claude": 3}.get(p, 99))
+            return sorted(
+                chain, key=lambda p: {"vllm": 1, "openai": 2, "claude": 3}.get(p, 99)
+            )
         elif self.strategy == "quality":
-            return sorted(chain, key=lambda p: {"claude": 1, "openai": 2, "vllm": 3}.get(p, 99))
+            return sorted(
+                chain, key=lambda p: {"claude": 1, "openai": 2, "vllm": 3}.get(p, 99)
+            )
 
         return chain
 
@@ -92,20 +99,28 @@ class LLMRouter:
             try:
                 if p == "openai":
                     return await self.providers["openai"].chat_completions(
-                        model=model, messages=messages,
-                        temperature=temperature, max_tokens=max_tokens, stream=stream,
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        stream=stream,
                     )
                 elif p == "claude":
                     claude_messages = self._convert_to_claude_format(messages)
                     result = await self.providers["claude"].messages(
-                        model=model, messages=claude_messages,
-                        temperature=temperature, max_tokens=max_tokens or 1024,
+                        model=model,
+                        messages=claude_messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens or 1024,
                     )
                     return self.providers["claude"].to_openai_format(result)
                 elif p == "vllm":
                     return await self.providers["vllm"].chat_completions(
-                        model=model, messages=messages,
-                        temperature=temperature, max_tokens=max_tokens or 2048, stream=stream,
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens or 2048,
+                        stream=stream,
                     )
             except Exception as e:
                 last_error = e
@@ -128,8 +143,10 @@ class LLMRouter:
             try:
                 if p == "openai":
                     async for chunk in self.providers["openai"].chat_completions_stream(
-                        model=model, messages=messages,
-                        temperature=temperature, max_tokens=max_tokens,
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
                     ):
                         yield chunk
                     return
@@ -138,8 +155,10 @@ class LLMRouter:
                     # Fallback to non-streaming
                     claude_messages = self._convert_to_claude_format(messages)
                     result = await self.providers["claude"].messages(
-                        model=model, messages=claude_messages,
-                        temperature=temperature, max_tokens=max_tokens or 1024,
+                        model=model,
+                        messages=claude_messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens or 1024,
                     )
                     formatted = self.providers["claude"].to_openai_format(result)
                     # Yield as a single chunk
@@ -148,8 +167,10 @@ class LLMRouter:
                     return
                 elif p == "vllm":
                     async for chunk in self.providers["vllm"].chat_completions_stream(
-                        model=model, messages=messages,
-                        temperature=temperature, max_tokens=max_tokens or 2048,
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens or 2048,
                     ):
                         yield chunk
                     return
@@ -157,7 +178,9 @@ class LLMRouter:
                 print(f"Provider {p} failed, trying fallback: {e}")
                 continue
 
-        yield json.dumps({"error": {"message": "All providers failed", "type": "internal_error"}})
+        yield json.dumps(
+            {"error": {"message": "All providers failed", "type": "internal_error"}}
+        )
 
     def _convert_to_claude_format(self, messages: list) -> list:
         """Convert OpenAI messages to Claude format."""
@@ -165,15 +188,16 @@ class LLMRouter:
         for msg in messages:
             role = msg.get("role", "user")
             if role == "system":
-                claude_messages.append({
-                    "role": "user",
-                    "content": f"[System] {msg.get('content', '')}"
-                })
+                claude_messages.append(
+                    {"role": "user", "content": f"[System] {msg.get('content', '')}"}
+                )
             else:
-                claude_messages.append({
-                    "role": "user" if role == "user" else "assistant",
-                    "content": msg.get("content", ""),
-                })
+                claude_messages.append(
+                    {
+                        "role": "user" if role == "user" else "assistant",
+                        "content": msg.get("content", ""),
+                    }
+                )
         return claude_messages
 
     def list_available_providers(self) -> list:

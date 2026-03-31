@@ -1,4 +1,5 @@
 """Embeddings routes - OpenAI compatible."""
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Union, List

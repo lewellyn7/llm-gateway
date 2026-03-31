@@ -1,6 +1,7 @@
 """
 Orchestrator - Agent execution with state management
 """
+
 from dataclasses import dataclass, field
 from typing import Any, Callable
 from enum import Enum
@@ -25,6 +26,7 @@ class Action:
 @dataclass
 class AgentResult:
     """Structured result from agent execution."""
+
     result: Any
     confidence: float
     cost: float
@@ -34,6 +36,7 @@ class AgentResult:
 @dataclass
 class State:
     """Represents the current execution state."""
+
     done: bool = False
     error: str | None = None
     attempt_count: int = 0
@@ -90,7 +93,7 @@ class PolicyEngine:
 class Orchestrator:
     """
     Orchestrator for managing agent execution.
-    
+
     Pattern:
     while not state.done():
         action = policy_engine.decide(state)
@@ -122,7 +125,9 @@ class Orchestrator:
     async def run(self, context: dict) -> AgentResult:
         """Run orchestrator with context."""
         state = State(
-            available_providers=context.get("available_providers", ["vllm", "claude", "openai"]),
+            available_providers=context.get(
+                "available_providers", ["vllm", "claude", "openai"]
+            ),
             current_provider=context.get("provider", "openai"),
             max_attempts=context.get("max_attempts", 3),
             metadata=context,
@@ -162,7 +167,9 @@ class Orchestrator:
             if action.type == ActionType.ROUTE:
                 provider = action.params.get("provider")
                 state.update(current_provider=provider)
-                return AgentResult(result={"provider": provider}, confidence=1.0, cost=0.0)
+                return AgentResult(
+                    result={"provider": provider}, confidence=1.0, cost=0.0
+                )
 
             elif action.type == ActionType.FALLBACK:
                 providers = state.available_providers
@@ -177,14 +184,21 @@ class Orchestrator:
                             confidence=0.8,
                             cost=0.0,
                         )
-                return AgentResult(result=None, confidence=0.0, cost=0.0, metadata={"error": "No more providers"})
+                return AgentResult(
+                    result=None,
+                    confidence=0.0,
+                    cost=0.0,
+                    metadata={"error": "No more providers"},
+                )
 
             elif action.type == ActionType.END:
                 state.update(done=True)
                 return AgentResult(result={"completed": True}, confidence=1.0, cost=0.0)
 
         except Exception as e:
-            return AgentResult(result=None, confidence=0.0, cost=0.0, metadata={"error": str(e)})
+            return AgentResult(
+                result=None, confidence=0.0, cost=0.0, metadata={"error": str(e)}
+            )
 
         return None
 
@@ -202,12 +216,14 @@ class Orchestrator:
 def max_budget_constraint(budget: float) -> Callable:
     def constraint(state: State) -> bool:
         return state.metadata.get("total_cost", 0) <= budget
+
     return constraint
 
 
 def max_latency_constraint(max_ms: float) -> Callable:
     def constraint(state: State) -> bool:
         return state.metadata.get("latency_ms", 0) <= max_ms
+
     return constraint
 
 
@@ -216,4 +232,5 @@ def provider_whitelist(allowed: list[str]) -> Callable:
         if state.current_provider:
             return state.current_provider in allowed
         return True
+
     return constraint

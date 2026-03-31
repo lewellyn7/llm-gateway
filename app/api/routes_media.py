@@ -1,4 +1,5 @@
 """Media routes for multimodal."""
+
 from fastapi import APIRouter, Depends, UploadFile, File
 from app.core.security import verify_api_key
 from app.services.media_service import MediaService

@@ -1,4 +1,5 @@
 """Admin routes for dashboard."""
+
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -63,7 +64,13 @@ async def admin_stats():
 async def list_tenants():
     """List all tenants."""
     return [
-        {"id": 1, "name": "Default", "email": "admin@example.com", "plan": "enterprise", "is_active": True},
+        {
+            "id": 1,
+            "name": "Default",
+            "email": "admin@example.com",
+            "plan": "enterprise",
+            "is_active": True,
+        },
     ]
 
 
@@ -71,8 +78,22 @@ async def list_tenants():
 async def list_keys():
     """List all API keys."""
     return [
-        {"id": 1, "name": "Production", "key_masked": "sk-xxxx...xxxx", "tenant_name": "Default", "rate_limit": 60, "is_active": True},
-        {"id": 2, "name": "Development", "key_masked": "sk-xxxx...xxxx", "tenant_name": "Default", "rate_limit": 30, "is_active": True},
+        {
+            "id": 1,
+            "name": "Production",
+            "key_masked": "sk-xxxx...xxxx",
+            "tenant_name": "Default",
+            "rate_limit": 60,
+            "is_active": True,
+        },
+        {
+            "id": 2,
+            "name": "Development",
+            "key_masked": "sk-xxxx...xxxx",
+            "tenant_name": "Default",
+            "rate_limit": 30,
+            "is_active": True,
+        },
     ]
 
 
@@ -105,7 +126,13 @@ async def save_settings(settings_data: dict):
 @router.post("/api/admin/tenants")
 async def create_tenant(tenant: TenantCreate):
     """Create a new tenant."""
-    return {"id": 2, "name": tenant.name, "email": tenant.email, "plan": tenant.plan, "is_active": True}
+    return {
+        "id": 2,
+        "name": tenant.name,
+        "email": tenant.email,
+        "plan": tenant.plan,
+        "is_active": True,
+    }
 
 
 @router.delete("/api/admin/keys/{key_id}")

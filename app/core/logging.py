@@ -1,4 +1,5 @@
 """Structured logging with Kafka."""
+
 import json
 from datetime import datetime
 from app.core.kafka import kafka_producer

@@ -1,4 +1,5 @@
 """Claude client with streaming support."""
+
 import httpx
 from typing import AsyncIterator
 from app.core.config import settings
@@ -22,7 +23,7 @@ class ClaudeClient:
         """Create a message or stream."""
         if stream:
             return self._stream_messages(model, messages, temperature, max_tokens)
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.base_url}/messages",
@@ -79,8 +80,11 @@ class ClaudeClient:
                             # Convert Claude event to OpenAI-compatible format
                             try:
                                 import json
+
                                 event_data = json.loads(data)
-                                openai_chunk = self._to_openai_chunk(event_data, event_type)
+                                openai_chunk = self._to_openai_chunk(
+                                    event_data, event_type
+                                )
                                 if openai_chunk:
                                     yield f"data: {json.dumps(openai_chunk)}\n\n"
                             except json.JSONDecodeError:
@@ -100,11 +104,13 @@ class ClaudeClient:
             delta = event.get("delta", {})
             if delta.get("type") == "text_delta":
                 return {
-                    "choices": [{
-                        "index": 0,
-                        "delta": {"content": delta.get("text", "")},
-                        "finish_reason": None,
-                    }]
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {"content": delta.get("text", "")},
+                            "finish_reason": None,
+                        }
+                    ]
                 }
         elif event_type == "message_stop":
             return None  # Handled by [DONE]
@@ -123,17 +129,23 @@ class ClaudeClient:
             "object": "chat.completion",
             "created": 1677610602,
             "model": claude_response.get("model", ""),
-            "choices": [{
-                "index": 0,
-                "message": {
-                    "role": "assistant",
-                    "content": content,
-                },
-                "finish_reason": claude_response.get("stop_reason", "stop"),
-            }],
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": content,
+                    },
+                    "finish_reason": claude_response.get("stop_reason", "stop"),
+                }
+            ],
             "usage": {
-                "prompt_tokens": claude_response.get("usage", {}).get("input_tokens", 0),
-                "completion_tokens": claude_response.get("usage", {}).get("output_tokens", 0),
+                "prompt_tokens": claude_response.get("usage", {}).get(
+                    "input_tokens", 0
+                ),
+                "completion_tokens": claude_response.get("usage", {}).get(
+                    "output_tokens", 0
+                ),
                 "total_tokens": sum(claude_response.get("usage", {}).values()),
             },
         }

@@ -1,4 +1,5 @@
 """Security utilities."""
+
 import hashlib
 import secrets
 from jose import jwt

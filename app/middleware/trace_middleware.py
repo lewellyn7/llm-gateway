@@ -1,4 +1,5 @@
 """Trace middleware for request tracing."""
+
 import uuid
 import time
 from fastapi import Request
@@ -19,6 +20,8 @@ class TraceMiddleware(BaseHTTPMiddleware):
 
         # Add trace headers to response
         response.headers["X-Trace-ID"] = trace_id
-        response.headers["X-Response-Time"] = f"{(time.time() - start_time) * 1000:.2f}ms"
+        response.headers["X-Response-Time"] = (
+            f"{(time.time() - start_time) * 1000:.2f}ms"
+        )
 
         return response

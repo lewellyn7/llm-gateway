@@ -1,4 +1,5 @@
 """vLLM client."""
+
 import httpx
 from typing import AsyncIterator
 from app.core.config import settings

@@ -1,4 +1,5 @@
 """Authentication middleware."""
+
 from fastapi import Request, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.security import verify_api_key

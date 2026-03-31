@@ -1,6 +1,7 @@
 """
 Tool Calling Service - Function calling support
 """
+
 import asyncio
 from typing import Any, Callable, Awaitable
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ class ToolCallStatus(Enum):
 @dataclass
 class ToolCall:
     """Represents a tool call request."""
+
     id: str
     name: str
     arguments: dict
@@ -28,6 +30,7 @@ class ToolCall:
 @dataclass
 class ToolDefinition:
     """Definition of a callable tool."""
+
     name: str
     description: str
     parameters: dict  # JSON Schema for parameters
@@ -37,6 +40,7 @@ class ToolDefinition:
 @dataclass
 class ToolCallResult:
     """Result of a tool call."""
+
     tool_call_id: str
     output: Any
     status: ToolCallStatus
@@ -99,10 +103,7 @@ class ToolRegistry:
 
     async def execute_batch(self, tool_calls: list[ToolCall]) -> list[ToolCallResult]:
         """Execute multiple tool calls concurrently."""
-        tasks = [
-            self.execute(tc.name, tc.arguments)
-            for tc in tool_calls
-        ]
+        tasks = [self.execute(tc.name, tc.arguments) for tc in tool_calls]
         return await asyncio.gather(*tasks)
 
 
@@ -113,6 +114,7 @@ tool_registry = ToolRegistry()
 # =============================================================================
 # Built-in Tools
 # =============================================================================
+
 
 async def get_weather(location: str, unit: str = "celsius") -> dict:
     """Get weather for a location."""
@@ -131,7 +133,11 @@ async def search_web(query: str, limit: int = 5) -> dict:
     return {
         "query": query,
         "results": [
-            {"title": f"Result {i}", "url": f"https://example.com/{i}", "snippet": "..."}
+            {
+                "title": f"Result {i}",
+                "url": f"https://example.com/{i}",
+                "snippet": "...",
+            }
             for i in range(limit)
         ],
     }
@@ -150,6 +156,7 @@ async def calculate(expression: str) -> dict:
 async def get_current_time(timezone: str = "UTC") -> dict:
     """Get current time for a timezone."""
     from datetime import datetime
+
     return {
         "timezone": timezone,
         "time": datetime.utcnow().isoformat(),
@@ -157,55 +164,67 @@ async def get_current_time(timezone: str = "UTC") -> dict:
 
 
 # Register built-in tools
-tool_registry.register(ToolDefinition(
-    name="get_weather",
-    description="Get current weather for a location",
-    parameters={
-        "type": "object",
-        "properties": {
-            "location": {"type": "string", "description": "City name"},
-            "unit": {"type": "string", "enum": ["celsius", "fahrenheit"], "default": "celsius"},
+tool_registry.register(
+    ToolDefinition(
+        name="get_weather",
+        description="Get current weather for a location",
+        parameters={
+            "type": "object",
+            "properties": {
+                "location": {"type": "string", "description": "City name"},
+                "unit": {
+                    "type": "string",
+                    "enum": ["celsius", "fahrenheit"],
+                    "default": "celsius",
+                },
+            },
+            "required": ["location"],
         },
-        "required": ["location"],
-    },
-    handler=get_weather,
-))
+        handler=get_weather,
+    )
+)
 
-tool_registry.register(ToolDefinition(
-    name="search_web",
-    description="Search the web for information",
-    parameters={
-        "type": "object",
-        "properties": {
-            "query": {"type": "string", "description": "Search query"},
-            "limit": {"type": "integer", "default": 5, "minimum": 1, "maximum": 20},
+tool_registry.register(
+    ToolDefinition(
+        name="search_web",
+        description="Search the web for information",
+        parameters={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Search query"},
+                "limit": {"type": "integer", "default": 5, "minimum": 1, "maximum": 20},
+            },
+            "required": ["query"],
         },
-        "required": ["query"],
-    },
-    handler=search_web,
-))
+        handler=search_web,
+    )
+)
 
-tool_registry.register(ToolDefinition(
-    name="calculate",
-    description="Calculate a mathematical expression",
-    parameters={
-        "type": "object",
-        "properties": {
-            "expression": {"type": "string", "description": "Math expression"},
+tool_registry.register(
+    ToolDefinition(
+        name="calculate",
+        description="Calculate a mathematical expression",
+        parameters={
+            "type": "object",
+            "properties": {
+                "expression": {"type": "string", "description": "Math expression"},
+            },
+            "required": ["expression"],
         },
-        "required": ["expression"],
-    },
-    handler=calculate,
-))
+        handler=calculate,
+    )
+)
 
-tool_registry.register(ToolDefinition(
-    name="get_current_time",
-    description="Get current time for a timezone",
-    parameters={
-        "type": "object",
-        "properties": {
-            "timezone": {"type": "string", "default": "UTC"},
+tool_registry.register(
+    ToolDefinition(
+        name="get_current_time",
+        description="Get current time for a timezone",
+        parameters={
+            "type": "object",
+            "properties": {
+                "timezone": {"type": "string", "default": "UTC"},
+            },
         },
-    },
-    handler=get_current_time,
-))
+        handler=get_current_time,
+    )
+)

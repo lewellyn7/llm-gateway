@@ -1,4 +1,5 @@
 """LLM routes - OpenAI Compatible + Streaming."""
+
 import time
 import uuid
 import json
@@ -261,7 +262,12 @@ async def get_model(model: str, api_key_info: dict = Depends(verify_api_key)):
                 owned_by=m["owned_by"],
                 created=1677610602,
             )
-    return {"error": {"message": f"Model {model} not found", "type": "invalid_request_error"}}
+    return {
+        "error": {
+            "message": f"Model {model} not found",
+            "type": "invalid_request_error",
+        }
+    }
 
 
 @router.get("/embeddings")
@@ -270,8 +276,23 @@ async def list_embeddings_models(api_key_info: dict = Depends(verify_api_key)):
     return {
         "object": "list",
         "data": [
-            {"id": "text-embedding-3-small", "object": "model", "created": 1705945660, "owned_by": "openai"},
-            {"id": "text-embedding-3-large", "object": "model", "created": 1705945660, "owned_by": "openai"},
-            {"id": "text-embedding-ada-002", "object": "model", "created": 1671216899, "owned_by": "openai"},
+            {
+                "id": "text-embedding-3-small",
+                "object": "model",
+                "created": 1705945660,
+                "owned_by": "openai",
+            },
+            {
+                "id": "text-embedding-3-large",
+                "object": "model",
+                "created": 1705945660,
+                "owned_by": "openai",
+            },
+            {
+                "id": "text-embedding-ada-002",
+                "object": "model",
+                "created": 1671216899,
+                "owned_by": "openai",
+            },
         ],
     }
