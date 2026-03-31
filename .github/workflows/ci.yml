@@ -42,9 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          dockerfile: docker/Dockerfile
-          push: false
-          tags: llm-gateway:test
+      - name: Build from docker directory
+        run: |
+          cd docker
+          docker build -t llm-gateway:test ..
