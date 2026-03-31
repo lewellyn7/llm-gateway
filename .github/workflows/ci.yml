@@ -32,7 +32,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install -r requirements.txt
       - run: pip install pytest pytest-asyncio httpx
-      - run: pytest tests/ -v
+      - run: PYTHONPATH=. pytest tests/ -v
 
   build:
     name: Build Docker
