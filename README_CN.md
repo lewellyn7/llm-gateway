@@ -27,8 +27,8 @@ git clone https://github.com/lewellyn7/llm-gateway.git
 cd llm-gateway
 
 # 配置
-cp .env.example .env
-# 编辑 .env 填入你的 API Keys
+cp docker/.env.example docker/.env
+# 编辑 docker/.env 填入你的 API Keys
 
 # 启动
 cd docker && docker-compose up -d
@@ -151,7 +151,7 @@ uvicorn app.main:app --reload --port 8000
 cd docker && docker build -t llm-gateway:latest .
 
 # 运行
-docker run -d -p 28000:8000 --env-file ../.env llm-gateway:latest
+docker run -d -p 28000:8000 --env-file .env llm-gateway:latest
 ```
 
 ## Docker Compose
