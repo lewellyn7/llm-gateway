@@ -7,180 +7,258 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom animations */
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .animate-slide-in { animation: slideIn 0.3s ease-out; }
+        .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+        .animate-pulse-slow { animation: pulse 2s infinite; }
+        
+        /* Toast styles */
+        .toast { position: fixed; top: 20px; right: 20px; z-index: 9999; max-w-sm; }
+        .toast-enter-active { animation: slideIn 0.3s ease-out; }
+        .toast-leave-active { animation: slideIn 0.3s ease-out reverse; }
+    </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900">
+<body class="bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
     <div id="app" class="min-h-screen">
+        <!-- Toast Container -->
+        <div class="toast">
+            <div v-for="toast in toasts" :key="toast.id"
+                :class="['mb-2 px-4 py-3 rounded-lg shadow-lg text-white animate-slide-in',
+                    toast.type === 'success' ? 'bg-green-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-blue-500']">
+                {{ toast.message }}
+            </div>
+        </div>
+
         <!-- Header -->
-        <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-            <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-                <h1 class="text-xl font-bold text-gray-800 dark:text-white">🚀 LLM Gateway Admin</h1>
+        <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🚀</span>
+                    <h1 class="text-xl font-bold text-gray-800 dark:text-white">LLM Gateway</h1>
+                    <span class="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 text-xs rounded-full font-medium">Admin</span>
+                </div>
                 <div class="flex items-center gap-4">
-                    <span class="text-sm text-gray-500">v{{ version }}</span>
-                    <button @click="logout" class="text-sm text-red-500 hover:text-red-700">登出</button>
+                    <!-- Dark Mode Toggle -->
+                    <button @click="toggleDark" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                        <span class="text-xl">{{ isDark ? '🌙' : '☀️' }}</span>
+                    </button>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">v{{ version }}</span>
+                    <button @click="logout" class="text-sm text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 px-3 py-1.5 rounded-lg transition font-medium">登出</button>
                 </div>
             </div>
         </header>
 
         <!-- Main Content -->
         <main class="max-w-7xl mx-auto px-4 py-6">
-            <!-- Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
-                    <div class="text-sm text-gray-500 mb-1">租户数</div>
-                    <div class="text-2xl font-bold text-gray-800 dark:text-white">{{ stats.tenants }}</div>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
-                    <div class="text-sm text-gray-500 mb-1">API Keys</div>
-                    <div class="text-2xl font-bold text-gray-800 dark:text-white">{{ stats.api_keys }}</div>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
-                    <div class="text-sm text-gray-500 mb-1">今日请求</div>
-                    <div class="text-2xl font-bold text-blue-600">{{ stats.requests_today }}</div>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
-                    <div class="text-sm text-gray-500 mb-1">本月成本</div>
-                    <div class="text-2xl font-bold text-green-600">${{ stats.monthly_cost }}</div>
+            <!-- Loading Overlay -->
+            <div v-if="loading" class="flex justify-center items-center py-20">
+                <div class="text-center">
+                    <div class="inline-block w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                    <p class="mt-3 text-gray-500 dark:text-gray-400">加载中...</p>
                 </div>
             </div>
 
-            <!-- Tabs -->
-            <div class="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">
-                <button v-for="tab in tabs" :key="tab.id"
-                    @click="currentTab = tab.id"
-                    :class="['px-4 py-2 rounded-t-lg text-sm font-medium transition',
-                        currentTab === tab.id
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700']">
-                    {{ tab.name }}
-                </button>
-            </div>
-
-            <!-- Tenants Tab -->
-            <div v-if="currentTab === 'tenants'" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                    <h2 class="font-bold text-gray-800 dark:text-white">租户管理</h2>
-                    <button @click="showCreateTenant = true" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700">+ 新建租户</button>
-                </div>
-                <div class="p-4">
-                    <table class="w-full">
-                        <thead>
-                            <tr class="text-left text-sm text-gray-500 border-b border-gray-200 dark:border-gray-700">
-                                <th class="pb-3">ID</th>
-                                <th class="pb-3">名称</th>
-                                <th class="pb-3">邮箱</th>
-                                <th class="pb-3">计划</th>
-                                <th class="pb-3">状态</th>
-                                <th class="pb-3">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="tenant in tenants" :key="tenant.id" class="border-b border-gray-100 dark:border-gray-700">
-                                <td class="py-3">{{ tenant.id }}</td>
-                                <td class="py-3">{{ tenant.name }}</td>
-                                <td class="py-3">{{ tenant.email }}</td>
-                                <td class="py-3"><span class="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">{{ tenant.plan }}</span></td>
-                                <td class="py-3"><span :class="tenant.is_active ? 'text-green-600' : 'text-red-500'" class="text-xs font-bold">{{ tenant.is_active ? '活跃' : '停用' }}</span></td>
-                                <td class="py-3">
-                                    <button @click="viewTenant(tenant)" class="text-indigo-600 hover:text-indigo-800 text-sm mr-2">详情</button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- API Keys Tab -->
-            <div v-if="currentTab === 'keys'" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                    <h2 class="font-bold text-gray-800 dark:text-white">API Keys</h2>
-                    <button @click="showCreateKey = true" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700">+ 生成 Key</button>
-                </div>
-                <div class="p-4">
-                    <table class="w-full">
-                        <thead>
-                            <tr class="text-left text-sm text-gray-500 border-b border-gray-200 dark:border-gray-700">
-                                <th class="pb-3">名称</th>
-                                <th class="pb-3">Key</th>
-                                <th class="pb-3">租户</th>
-                                <th class="pb-3">限额</th>
-                                <th class="pb-3">状态</th>
-                                <th class="pb-3">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="key in api_keys" :key="key.id" class="border-b border-gray-100 dark:border-gray-700">
-                                <td class="py-3">{{ key.name }}</td>
-                                <td class="py-3 font-mono text-xs">{{ key.key_masked }}</td>
-                                <td class="py-3">{{ key.tenant_name }}</td>
-                                <td class="py-3">{{ key.rate_limit }}/min</td>
-                                <td class="py-3"><span :class="key.is_active ? 'text-green-600' : 'text-red-500'" class="text-xs font-bold">{{ key.is_active ? '活跃' : '停用' }}</span></td>
-                                <td class="py-3">
-                                    <button @click="copyKey(key)" class="text-gray-500 hover:text-gray-700 text-sm mr-2">复制</button>
-                                    <button @click="revokeKey(key)" class="text-red-500 hover:text-red-700 text-sm">撤销</button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Usage Tab -->
-            <div v-if="currentTab === 'usage'" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <h2 class="font-bold text-gray-800 dark:text-white">用量统计</h2>
-                </div>
-                <div class="p-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-5">
-                            <div class="text-sm text-blue-600 mb-1">总请求数</div>
-                            <div class="text-3xl font-bold text-blue-700 dark:text-blue-400">{{ usage.total_requests }}</div>
+            <template v-else>
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">租户数</span>
+                            <span class="text-xl">🏢</span>
                         </div>
-                        <div class="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-5">
-                            <div class="text-sm text-green-600 mb-1">总 Token</div>
-                            <div class="text-3xl font-bold text-green-700 dark:text-green-400">{{ usage.total_tokens }}</div>
-                        </div>
+                        <div class="text-3xl font-bold text-gray-800 dark:text-white">{{ stats.tenants }}</div>
+                        <div class="text-xs text-gray-400 mt-1">活跃租户</div>
                     </div>
-                    <h3 class="font-bold text-gray-800 dark:text-white mb-3">按模型统计</h3>
-                    <div class="space-y-2">
-                        <div v-for="(count, model) in usage.by_model" :key="model" class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                            <span class="font-medium text-gray-700 dark:text-gray-200">{{ model }}</span>
-                            <span class="text-gray-500">{{ count }} 请求</span>
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">API Keys</span>
+                            <span class="text-xl">🔑</span>
                         </div>
+                        <div class="text-3xl font-bold text-gray-800 dark:text-white">{{ stats.api_keys }}</div>
+                        <div class="text-xs text-gray-400 mt-1">已生成</div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">今日请求</span>
+                            <span class="text-xl">📊</span>
+                        </div>
+                        <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">{{ stats.requests_today }}</div>
+                        <div class="text-xs text-gray-400 mt-1">次</div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">本月成本</span>
+                            <span class="text-xl">💰</span>
+                        </div>
+                        <div class="text-3xl font-bold text-green-600 dark:text-green-400">${{ stats.monthly_cost }}</div>
+                        <div class="text-xs text-gray-400 mt-1">美元</div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Settings Tab -->
-            <div v-if="currentTab === 'settings'" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <h2 class="font-bold text-gray-800 dark:text-white">系统设置</h2>
+                <!-- Tabs -->
+                <div class="flex gap-1 mb-6 bg-gray-200 dark:bg-gray-700/50 p-1 rounded-xl">
+                    <button v-for="tab in tabs" :key="tab.id"
+                        @click="currentTab = tab.id"
+                        :class="['flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
+                            currentTab === tab.id
+                                ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white']">
+                        <span class="mr-1">{{ tab.icon }}</span> {{ tab.name }}
+                    </button>
                 </div>
-                <div class="p-4 space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">OpenAI API Key</label>
-                        <input type="password" v-model="settings.OPENAI_API_KEY" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white" placeholder="sk-...">
+
+                <!-- Tenants Tab -->
+                <div v-if="currentTab === 'tenants'" class="animate-fade-in">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-700/30">
+                            <h2 class="font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                <span>🏢</span> 租户管理
+                            </h2>
+                            <button @click="showCreateTenant = true" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition flex items-center gap-1">
+                                <span>+</span> 新建租户
+                            </button>
+                        </div>
+                        <div v-if="tenants.length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
+                            <span class="text-4xl mb-2 block">📭</span>
+                            <p>暂无租户</p>
+                        </div>
+                        <table v-else class="w-full">
+                            <thead>
+                                <tr class="text-left text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-700/30">
+                                    <th class="px-4 py-3 font-medium">ID</th>
+                                    <th class="px-4 py-3 font-medium">名称</th>
+                                    <th class="px-4 py-3 font-medium">邮箱</th>
+                                    <th class="px-4 py-3 font-medium">计划</th>
+                                    <th class="px-4 py-3 font-medium">状态</th>
+                                    <th class="px-4 py-3 font-medium">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                <tr v-for="tenant in tenants" :key="tenant.id" class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                                    <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">#{{ tenant.id }}</td>
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-800 dark:text-white">{{ tenant.name }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ tenant.email }}</td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-1 text-xs rounded-full"
+                                            :class="{
+                                                'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300': tenant.plan === 'enterprise',
+                                                'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300': tenant.plan === 'pro',
+                                                'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300': tenant.plan === 'free'
+                                            }">
+                                            {{ tenant.plan }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span v-if="tenant.is_active" class="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                                            <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse-slow"></span> 活跃
+                                        </span>
+                                        <span v-else class="inline-flex items-center gap-1 text-xs text-red-500">
+                                            <span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span> 停用
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <button @click="viewTenant(tenant)" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm font-medium mr-3">详情</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Claude API Key</label>
-                        <input type="password" v-model="settings.ANTHROPIC_API_KEY" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white" placeholder="sk-ant-...">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">vLLM Endpoint</label>
-                        <input type="text" v-model="settings.VLLM_ENDPOINT" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white" placeholder="http://localhost:8000">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">默认路由策略</label>
-                        <select v-model="settings.DEFAULT_STRATEGY" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
-                            <option value="balanced">均衡 (balanced)</option>
-                            <option value="cost">成本优先 (cost)</option>
-                            <option value="latency">延迟优先 (latency)</option>
-                            <option value="quality">质量优先 (quality)</option>
-                        </select>
-                    </div>
-                    <button @click="saveSettings" class="bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700">保存设置</button>
                 </div>
-            </div>
+
+                <!-- API Keys Tab -->
+                <div v-if="currentTab === 'keys'" class="animate-fade-in">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-700/30">
+                            <h2 class="font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                <span>🔑</span> API Keys
+                            </h2>
+                            <button @click="showCreateKey = true" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition flex items-center gap-1">
+                                <span>+</span> 生成 Key
+                            </button>
+                        </div>
+                        <div v-if="api_keys.length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
+                            <span class="text-4xl mb-2 block">🔐</span>
+                            <p>暂无 API Keys</p>
+                        </div>
+                        <table v-else class="w-full">
+                            <thead>
+                                <tr class="text-left text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-700/30">
+                                    <th class="px-4 py-3 font-medium">Key</th>
+                                    <th class="px-4 py-3 font-medium">租户</th>
+                                    <th class="px-4 py-3 font-medium">创建时间</th>
+                                    <th class="px-4 py-3 font-medium">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                <tr v-for="key in api_keys" :key="key.id" class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                                    <td class="px-4 py-3">
+                                        <code class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded font-mono text-gray-600 dark:text-gray-300">{{ key.key.substring(0, 20) }}...</code>
+                                        <button @click="copyKey(key)" class="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" title="复制">📋</button>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ key.tenant_name }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ key.created_at }}</td>
+                                    <td class="px-4 py-3">
+                                        <button @click="revokeKey(key)" class="text-red-500 hover:text-red-700 text-sm font-medium">撤销</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Usage Tab -->
+                <div v-if="currentTab === 'usage'" class="animate-fade-in">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30">
+                            <h2 class="font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                <span>📊</span> 用量统计
+                            </h2>
+                        </div>
+                        <div class="p-4">
+                            <pre class="text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg overflow-auto max-h-96">{{ JSON.stringify(usage, null, 2) }}</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div v-if="currentTab === 'settings'" class="animate-fade-in">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30">
+                            <h2 class="font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                <span>⚙️</span> 系统设置
+                            </h2>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">应用名称</label>
+                                <input v-model="settings.APP_NAME" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">调试模式</label>
+                                <select v-model="settings.DEBUG" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
+                                    <option :value="true">开启</option>
+                                    <option :value="false">关闭</option>
+                                </select>
+                            </div>
+                            <div class="pt-4">
+                                <button @click="saveSettings" class="bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition">
+                                    保存设置
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </main>
+
+        <!-- Footer -->
+        <footer class="mt-8 py-4 text-center text-xs text-gray-400 dark:text-gray-500">
+            LLM Gateway · 开源免费 · MIT License
+        </footer>
     </div>
 
     <script>
@@ -190,21 +268,39 @@
             setup() {
                 const version = ref('1.0.0');
                 const currentTab = ref('tenants');
+                const loading = ref(true);
+                const isDark = ref(localStorage.getItem('darkMode') === 'true');
+                const toasts = ref([]);
+                
                 const tabs = [
-                    { id: 'tenants', name: '🏢 租户' },
-                    { id: 'keys', name: '🔑 API Keys' },
-                    { id: 'usage', name: '📊 用量' },
-                    { id: 'settings', name: '⚙️ 设置' },
+                    { id: 'tenants', name: '租户', icon: '🏢' },
+                    { id: 'keys', name: 'Keys', icon: '🔑' },
+                    { id: 'usage', name: '用量', icon: '📊' },
+                    { id: 'settings', name: '设置', icon: '⚙️' }
                 ];
 
                 const stats = ref({ tenants: 0, api_keys: 0, requests_today: 0, monthly_cost: '0.00' });
                 const tenants = ref([]);
                 const api_keys = ref([]);
-                const usage = ref({ total_requests: 0, total_tokens: 0, by_model: {} });
-                const settings = ref({ OPENAI_API_KEY: '', ANTHROPIC_API_KEY: '', VLLM_ENDPOINT: '', DEFAULT_STRATEGY: 'balanced' });
-
+                const usage = ref({});
+                const settings = ref({});
                 const showCreateTenant = ref(false);
                 const showCreateKey = ref(false);
+
+                // Toast notification
+                const showToast = (message, type = 'info') => {
+                    const id = Date.now();
+                    toasts.value.push({ id, message, type });
+                    setTimeout(() => {
+                        toasts.value = toasts.value.filter(t => t.id !== id);
+                    }, 3000);
+                };
+
+                const toggleDark = () => {
+                    isDark.value = !isDark.value;
+                    localStorage.setItem('darkMode', isDark.value);
+                    document.documentElement.classList.toggle('dark', isDark.value);
+                };
 
                 const fetchStats = async () => {
                     try {
@@ -221,6 +317,7 @@
                         tenants.value = res.data;
                     } catch (e) {
                         console.error('Failed to fetch tenants:', e);
+                        showToast('加载租户失败', 'error');
                     }
                 };
 
@@ -229,7 +326,7 @@
                         const res = await axios.get('/api/admin/keys');
                         api_keys.value = res.data;
                     } catch (e) {
-                        console.error('Failed to fetch keys:', e);
+                        console.error('Failed to fetch API keys:', e);
                     }
                 };
 
@@ -245,9 +342,9 @@
                 const saveSettings = async () => {
                     try {
                         await axios.post('/api/admin/settings', settings.value);
-                        alert('设置已保存');
+                        showToast('设置已保存', 'success');
                     } catch (e) {
-                        alert('保存失败: ' + e.message);
+                        showToast('保存失败: ' + e.message, 'error');
                     }
                 };
 
@@ -257,32 +354,46 @@
                 };
 
                 const viewTenant = (tenant) => {
-                    // TODO: Show tenant details modal
-                    alert('租户详情: ' + tenant.name);
+                    showToast('租户详情: ' + tenant.name, 'info');
                 };
 
                 const copyKey = (key) => {
                     navigator.clipboard.writeText(key.key);
-                    alert('已复制到剪贴板');
+                    showToast('已复制到剪贴板', 'success');
                 };
 
                 const revokeKey = async (key) => {
                     if (confirm('确认撤销此 Key?')) {
-                        await axios.delete('/api/admin/keys/' + key.id);
-                        fetchApiKeys();
+                        try {
+                            await axios.delete('/api/admin/keys/' + key.id);
+                            showToast('Key 已撤销', 'success');
+                            fetchApiKeys();
+                        } catch (e) {
+                            showToast('撤销失败', 'error');
+                        }
                     }
                 };
 
                 onMounted(() => {
-                    fetchStats();
-                    fetchTenants();
-                    fetchApiKeys();
-                    fetchUsage();
+                    // Apply dark mode on load
+                    if (isDark.value) {
+                        document.documentElement.classList.add('dark');
+                    }
+                    
+                    // Fetch all data
+                    Promise.all([fetchStats(), fetchTenants(), fetchApiKeys(), fetchUsage()])
+                        .finally(() => {
+                            loading.value = false;
+                        });
+                        
+                    // Auto-refresh stats every 30s
+                    setInterval(fetchStats, 30000);
                 });
 
                 return {
                     version, currentTab, tabs, stats, tenants, api_keys, usage, settings,
-                    showCreateTenant, showCreateKey, saveSettings, logout, viewTenant, copyKey, revokeKey
+                    showCreateTenant, showCreateKey, saveSettings, logout, viewTenant, copyKey, revokeKey,
+                    loading, isDark, toggleDark, toasts, showToast
                 };
             }
         }).mount('#app');
