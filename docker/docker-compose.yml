@@ -1,6 +1,8 @@
 services:
   app:
-    build: .
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: llm-gateway
     ports:
       - "28000:8000"

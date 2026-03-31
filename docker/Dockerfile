@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Upgrade pip
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Copy requirements
+# Copy requirements from parent directory
 COPY requirements.txt .
 
 # Pre-install with longer timeout
@@ -40,7 +40,7 @@ COPY --from=builder /app/wheels /wheels
 RUN pip install --no-cache-dir --no-deps /wheels/*.whl || \
     pip install --no-cache-dir --find-links=/wheels /wheels/*.whl
 
-# Copy application
+# Copy application from parent directory
 COPY app/ ./app/
 
 # Create non-root user
