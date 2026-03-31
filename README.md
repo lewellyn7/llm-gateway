@@ -12,6 +12,8 @@
 - 📝 **Async Logging** - Kafka-based event streaming
 - 🔌 **OpenAI Compatible** - Drop-in replacement for OpenAI API
 - 🛡️ **Middleware** - Auth, usage tracking, request tracing
+- 🔧 **Tool Calling** - Extensible function calling
+- 📊 **Admin Dashboard** - Vue 3 + Tailwind CSS
 
 ## Quick Start
 
@@ -43,6 +45,12 @@ curl -X POST http://localhost:28000/v1/chat/completions \
 # List Models
 curl http://localhost:28000/v1/models \
   -H "Authorization: Bearer sk-your-key"
+
+# Embeddings
+curl -X POST http://localhost:28000/v1/embeddings \
+  -H "Authorization: Bearer sk-your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Hello world", "model": "text-embedding-3-small"}'
 ```
 
 ## Architecture
@@ -55,7 +63,7 @@ curl http://localhost:28000/v1/models \
 ┌───────────────────┐
 │  API Gateway      │
 │  (FastAPI)       │
-└────┬────────┬────┘
+└────┬────────┬─────┘
      ↓        ↓
 ┌─────────┐ ┌──────────────┐
 │ Auth    │ │ Router       │
@@ -69,11 +77,110 @@ curl http://localhost:28000/v1/models \
 └─────────────┘ └─────────────────┘
 ```
 
-## Documentation
+## Providers
 
-- [Migration Guide](MIGRATION.md) - From ai-gateway
-- [API Reference](#api-endpoints)
-- [Configuration](#environment-variables)
+| Provider | Models | Streaming |
+|----------|--------|-----------|
+| OpenAI | gpt-4o, gpt-4o-mini, gpt-3.5-turbo | ✅ |
+| Claude | claude-3-5-sonnet, claude-3-opus | ✅ |
+| vLLM | llama-3-70b, llama-3-8b, qwen-72b | ✅ |
+
+## Routing Strategies
+
+- **balanced** - Balance cost and quality (default)
+- **cost** - Prefer cheapest provider
+- **latency** - Prefer fastest provider
+- **quality** - Prefer best quality provider
+
+## Tool Calling
+
+```bash
+# List available tools
+curl http://localhost:28000/api/tools/list \
+  -H "Authorization: Bearer sk-your-key"
+
+# Call tools
+curl -X POST http://localhost:28000/api/tools/call \
+  -H "Authorization: Bearer sk-your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"tool_calls": [{"name": "get_weather", "arguments": {"location": "Beijing"}}]}'
+```
+
+## Admin Dashboard
+
+Access at `/admin` (default: admin/admin)
+
+- 🏢 Tenant management
+- 🔑 API key generation
+- 📊 Usage statistics
+- ⚙️ System settings
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | postgresql+asyncpg://... | PostgreSQL connection |
+| `REDIS_URL` | redis://localhost:6379/0 | Redis connection |
+| `KAFKA_BOOTSTRAP_SERVERS` | localhost:9092 | Kafka brokers |
+| `OPENAI_API_KEY` | - | OpenAI API key |
+| `ANTHROPIC_API_KEY` | - | Anthropic API key |
+| `VLLM_ENDPOINT` | - | vLLM endpoint |
+| `SECRET_KEY` | change-me... | JWT secret |
+
+## Development
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run tests
+pytest tests/ -v
+
+# Run locally
+uvicorn app.main:app --reload --port 8000
+```
+
+## Docker
+
+```bash
+# Build
+docker build -t llm-gateway:latest .
+
+# Run
+docker run -d -p 28000:8000 --env-file .env llm-gateway:latest
+```
+
+## CI/CD
+
+GitHub Actions pipeline:
+1. Lint (ruff)
+2. Test (pytest)
+3. Build (Docker)
+4. Deploy (SSH)
+
+## Project Structure
+
+```
+llm-gateway/
+├── app/
+│   ├── main.py           # FastAPI app
+│   ├── core/            # Config, security, limiter, logging
+│   ├── api/             # API routes
+│   ├── services/        # Router, billing, tools
+│   ├── db/              # Session, models, crud
+│   ├── middleware/      # Auth, usage, trace
+│   ├── schemas/         # Pydantic schemas
+│   ├── providers/        # LLM clients
+│   └── templates/        # Admin UI
+├── .github/workflows/    # CI/CD
+├── docker-compose.yml
+├── Dockerfile
+└── requirements.txt
+```
+
+## Migration from ai-gateway
+
+See [MIGRATION.md](MIGRATION.md)
 
 ## License
 

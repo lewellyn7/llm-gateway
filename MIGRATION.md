@@ -4,7 +4,7 @@
 
 **llm-gateway** is the redesigned successor to **ai-gateway**.
 
-## Comparison
+## Feature Comparison
 
 | Feature | ai-gateway | llm-gateway |
 |---------|------------|-------------|
@@ -16,97 +16,91 @@
 | Billing | None | Token-based |
 | Streaming | Partial | Full SSE |
 | Tool Calling | None | Extensible |
+| Admin UI | Basic | Vue 3 Dashboard |
+| CI/CD | Basic | Full GitHub Actions |
 | API Compatibility | Partial | OpenAI Full |
-
-## Key Changes
-
-### 1. Configuration
-```bash
-# Old: .env file
-# New: .env + docker-compose.yml
-```
-
-### 2. Database
-```bash
-# Old: SQLite file
-# New: PostgreSQL with asyncpg
-```
-
-### 3. API Keys
-```bash
-# Old: Simple keys
-# New: Tenant-bound keys with quotas
-```
-
-### 4. Environment Variables
-
-| Old | New |
-|-----|-----|
-| `ADMIN_USER` | `POSTGRES_USER` |
-| `ADMIN_PASSWORD` | `POSTGRES_PASSWORD` |
-| `DB_TYPE` | `DATABASE_URL` |
-| - | `REDIS_URL` |
-| - | `KAFKA_BOOTSTRAP_SERVERS` |
-| - | `OPENAI_API_KEY` |
-| - | `ANTHROPIC_API_KEY` |
-| - | `VLLM_ENDPOINT` |
 
 ## Migration Steps
 
 ### 1. Export Existing Data
-```bash
-# Export API keys from ai-gateway
-# Export model configurations
-```
+
+From ai-gateway database:
+- API keys and configurations
+- Model pools
+- Usage statistics
 
 ### 2. Deploy llm-gateway
+
 ```bash
 cd llm-gateway
+
+# Configure environment
+cp .env.example .env
+vim .env  # Add your API keys
+
+# Start services
 docker-compose up -d
+
+# Check health
+curl http://localhost:28000/health
 ```
 
-### 3. Import Data
+### 3. Update Clients
+
+Update API endpoint URLs:
 ```bash
-# Import API keys
-# Import model configurations
+# Old
+https://your-old-gateway.com/v1/chat/completions
+
+# New
+https://your-new-gateway.com/v1/chat/completions
 ```
 
-### 4. Update Clients
+Update authentication headers (if using different key format):
 ```bash
-# Update API endpoint URLs
-# Update authentication headers
+# Same format
+-H "Authorization: Bearer sk-your-key"
+```
+
+### 4. Verify
+
+```bash
+# Test chat completion
+curl -X POST http://localhost:28000/v1/chat/completions \
+  -H "Authorization: Bearer sk-your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "test"}]}'
+
+# Check capabilities
+curl http://localhost:28000/capabilities
 ```
 
 ## API Compatibility
 
-### Compatible
-- `POST /v1/chat/completions` ✅
-- `GET /v1/models` ✅
-- `POST /v1/embeddings` ✅
+### Compatible Endpoints
+
+| Endpoint | Status | Notes |
+|----------|--------|-------|
+| `POST /v1/chat/completions` | ✅ | Full compatibility |
+| `GET /v1/models` | ✅ | Full compatibility |
+| `POST /v1/embeddings` | ✅ | Full compatibility |
+| `POST /api/tools/call` | ✅ | New feature |
+| `GET /api/tools/list` | ✅ | New feature |
 
 ### New Endpoints
-- `GET /capabilities` - Gateway capabilities
-- `GET /health` - Enhanced health check
-- `/api/tools/*` - Tool calling
-- `/api/media/*` - Multimodal
 
-### Removed
-- `/api/pool/*` - Pool management (replaced by multi-tenant)
-- `/api/oauth/*` - OAuth (future feature)
-- `/admin/*` - Admin UI (new UI coming)
+| Endpoint | Description |
+|----------|-------------|
+| `GET /capabilities` | Gateway capabilities |
+| `GET /health` | Enhanced health check |
+| `/admin/*` | Admin dashboard |
 
-## Environment Setup
+### Removed Endpoints
 
-```bash
-# Copy example env
-cp .env.example .env
-
-# Edit with your values
-vim .env
-
-# Start services
-docker-compose up -d
-```
+| Old Endpoint | Replacement |
+|-------------|-------------|
+| `/api/pool/*` | Multi-tenant system |
+| `/api/oauth/*` | Future feature |
 
 ## Rollback
 
@@ -117,7 +111,6 @@ If rollback needed, the old ai-gateway is preserved at:
 
 ## Support
 
-For issues or questions, check:
-- `/docs` - API documentation
-- `/capabilities` - Gateway capabilities
-- `/health` - Health check with provider status
+- API Docs: `/docs`
+- Health: `/health`
+- Capabilities: `/capabilities`
