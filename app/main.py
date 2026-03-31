@@ -11,6 +11,7 @@ from app.api.routes_llm import router as llm_router
 from app.api.routes_claude import router as claude_router
 from app.api.routes_tools import router as tools_router
 from app.api.routes_media import router as media_router
+from app.api.routes_embeddings import router as embeddings_router
 
 
 @asynccontextmanager
@@ -40,7 +41,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Custom middleware
+# Custom middleware (order matters - last added is first executed)
 app.add_middleware(TraceMiddleware)
 app.add_middleware(UsageMiddleware)
 app.add_middleware(AuthMiddleware)
@@ -50,13 +51,36 @@ app.include_router(llm_router, prefix="/v1")
 app.include_router(claude_router)
 app.include_router(tools_router, prefix="/api")
 app.include_router(media_router, prefix="/api")
+app.include_router(embeddings_router, prefix="/v1")
 
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "version": settings.APP_VERSION}
+    """Health check."""
+    return {
+        "status": "healthy",
+        "version": settings.APP_VERSION,
+        "providers": {
+            "openai": bool(settings.OPENAI_API_KEY),
+            "claude": bool(settings.ANTHROPIC_API_KEY),
+            "vllm": bool(settings.VLLM_ENDPOINT),
+        },
+    }
 
 
 @app.get("/")
 async def root():
-    return {"message": "LLM Gateway API", "version": settings.APP_VERSION}
+    """Root endpoint."""
+    return {
+        "name": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "docs": "/docs",
+    }
+
+
+@app.get("/capabilities")
+async def capabilities():
+    """Get gateway capabilities."""
+    from app.services.llm_router import LLMRouter
+    router = LLMRouter()
+    return router.get_capabilities()
