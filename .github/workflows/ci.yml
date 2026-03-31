@@ -12,9 +12,6 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Job 1: Lint
-  # ---------------------------------------------------------------------------
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -32,14 +29,11 @@ jobs:
         run: pip install ruff
 
       - name: Run Ruff lint
-        run: ruff check app/ --output-format=github
+        run: ruff check app/ tests/ --output-format=github
 
       - name: Run Ruff format check
         run: ruff format app/ tests/ --check
 
-  # ---------------------------------------------------------------------------
-  # Job 2: Test
-  # ---------------------------------------------------------------------------
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -55,21 +49,18 @@ jobs:
 
       - name: Install dependencies
         run: |
+          pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-asyncio httpx
 
       - name: Run tests
         run: pytest tests/ -v --tb=short
 
-  # ---------------------------------------------------------------------------
-  # Job 3: Build Docker
-  # ---------------------------------------------------------------------------
   build:
     name: Build Docker
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     needs: [lint, test]
-    if: github.event_name == 'push'
 
     permissions:
       contents: read
@@ -98,38 +89,33 @@ jobs:
       - uses: docker/build-push-action@v5
         with:
           context: .
-          push: true
+          push: ${{ github.event_name == 'push' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          timeout: 20m
 
-  # ---------------------------------------------------------------------------
-  # Job 4: Deploy
-  # ---------------------------------------------------------------------------
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: build
+    needs: [build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
       - name: Deploy via SSH
+        if: secrets.DEPLOY_HOST != ''
         env:
           HOST: ${{ secrets.DEPLOY_HOST }}
           USER: ${{ secrets.DEPLOY_USER }}
           KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
-          if [ -n "$HOST" ] && [ -n "$KEY" ]; then
-            echo "$KEY" | base64 -d > /tmp/deploy_key
-            chmod 600 /tmp/deploy_key
-            ssh -o StrictHostKeyChecking=no -i /tmp/deploy_key "$USER@$HOST" "
-              cd /opt/llm-gateway &&
-              docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest &&
-              docker-compose up -d
-            "
-            rm -f /tmp/deploy_key
-          else
-            echo "Deploy skipped: secrets not configured"
-          fi
+          echo "$KEY" | base64 -d > /tmp/deploy_key
+          chmod 600 /tmp/deploy_key
+          ssh -o StrictHostKeyChecking=no -i /tmp/deploy_key "$USER@$HOST" "
+            cd /opt/llm-gateway &&
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main &&
+            docker-compose up -d
+          "
+          rm -f /tmp/deploy_key
