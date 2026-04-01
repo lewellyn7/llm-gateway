@@ -36,7 +36,7 @@ async def rerank(
 ):
     """
     Rerank documents based on query relevance.
-    
+
     Uses Cohere Rerank API for semantic search refinement.
     """
     try:
@@ -47,7 +47,7 @@ async def rerank(
             model=request.model,
             top_n=request.top_n,
         )
-        
+
         # Format response
         results = [
             RerankResult(
@@ -57,13 +57,13 @@ async def rerank(
             )
             for item in result.get("results", [])
         ]
-        
+
         return RerankResponse(
             id=result.get("id", ""),
             results=results,
             meta=result.get("meta", {}),
         )
-        
+
     except ValueError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:

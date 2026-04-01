@@ -27,16 +27,17 @@ async def lifespan(app: FastAPI):
     # Startup
     await kafka_producer.connect()
     await rate_limiter.connect()
-    
+
     # Initialize Telegram bot if configured
     if settings.TELEGRAM_BOT_TOKEN:
         from app.api.channels.telegram import telegram_service
+
         telegram_service.init(settings.TELEGRAM_BOT_TOKEN)
         telegram_service.register()
         print("Telegram bot initialized")
-    
+
     yield
-    
+
     # Shutdown
     await kafka_producer.close()
     await rate_limiter.close()

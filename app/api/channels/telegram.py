@@ -15,25 +15,33 @@ class TelegramBot:
         self._running = False
         self._handlers: list[Callable] = []
 
-    async def send_message(self, chat_id: int, text: str, parse_mode: str = "Markdown") -> dict:
+    async def send_message(
+        self, chat_id: int, text: str, parse_mode: str = "Markdown"
+    ) -> dict:
         """Send a message to a Telegram chat."""
         url = f"{self.api_base}/sendMessage"
         async with httpx.AsyncClient() as client:
-            response = await client.post(url, json={
-                "chat_id": chat_id,
-                "text": text,
-                "parse_mode": parse_mode,
-            })
+            response = await client.post(
+                url,
+                json={
+                    "chat_id": chat_id,
+                    "text": text,
+                    "parse_mode": parse_mode,
+                },
+            )
             return response.json()
 
     async def send_streaming_message(self, chat_id: int, text: str) -> None:
         """Send message with typing indicator for streaming."""
         url = f"{self.api_base}/sendChatAction"
         async with httpx.AsyncClient() as client:
-            await client.post(url, json={
-                "chat_id": chat_id,
-                "action": "typing",
-            })
+            await client.post(
+                url,
+                json={
+                    "chat_id": chat_id,
+                    "action": "typing",
+                },
+            )
 
     async def get_updates(self, timeout: int = 30) -> list[dict]:
         """Get updates from Telegram."""
@@ -68,7 +76,7 @@ class TelegramBot:
 
         chat_id = message.get("chat", {}).get("id")
         text = message.get("text", "")
-        
+
         if not chat_id or not text:
             return
 
@@ -130,10 +138,10 @@ class TelegramService:
     async def chat(self, chat_id: int, message: str) -> str:
         """Process chat message and return response."""
         from app.services.llm_router import LLMRouter
-        
+
         router = LLMRouter()
         messages = [{"role": "user", "content": message}]
-        
+
         try:
             response = await router.chat_completion(
                 model="gpt-4o-mini",
@@ -147,14 +155,14 @@ class TelegramService:
         """Default message handler."""
         # Show typing indicator
         await self.bot.send_streaming_message(chat_id, "")
-        
+
         # Process and respond
         response = await self.chat(chat_id, text)
-        
+
         # Send response (split if too long)
         if len(response) > 4096:
             for i in range(0, len(response), 4096):
-                await self.bot.send_message(chat_id, response[i:i+4096])
+                await self.bot.send_message(chat_id, response[i : i + 4096])
         else:
             await self.bot.send_message(chat_id, response)
 

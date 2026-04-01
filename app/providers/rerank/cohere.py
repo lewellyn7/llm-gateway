@@ -21,13 +21,13 @@ class CohereRerank:
     ) -> dict:
         """
         Rerank documents based on query relevance.
-        
+
         Args:
             query: The search query
             documents: List of documents to rerank
             model: Rerank model to use
             top_n: Number of top results to return
-        
+
         Returns:
             Reranked results with scores
         """
@@ -61,13 +61,15 @@ class CohereRerank:
     ) -> List[dict]:
         """Rerank and return results with relevance scores."""
         result = await self.rerank(query, documents, model, top_n)
-        
+
         results = []
         for item in result.get("results", []):
-            results.append({
-                "index": item.get("index"),
-                "document": documents[item.get("index")],
-                "relevance_score": item.get("relevance_score"),
-            })
-        
+            results.append(
+                {
+                    "index": item.get("index"),
+                    "document": documents[item.get("index")],
+                    "relevance_score": item.get("relevance_score"),
+                }
+            )
+
         return results
