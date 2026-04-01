@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
 
+    # Telegram Settings
+    TELEGRAM_BOT_TOKEN: Optional[str] = None
+    TELEGRAM_WEBHOOK_URL: Optional[str] = None
+    TELEGRAM_ALLOWED_CHATS: Optional[str] = None  # Comma-separated chat IDs
+
     MODEL_RATES: dict = {
         "openai": {"gpt-4o": 0.03, "gpt-4o-mini": 0.0015},
         "claude": {"claude-3-5-sonnet": 0.02},

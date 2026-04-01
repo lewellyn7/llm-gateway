@@ -17,6 +17,7 @@ from app.api.routes_media import router as media_router
 from app.api.routes_embeddings import router as embeddings_router
 from app.api.routes_admin import router as admin_router
 from app.api.routes_oauth import router as oauth_router
+from app.api.routes_telegram import router as telegram_router
 
 
 @asynccontextmanager
@@ -25,7 +26,16 @@ async def lifespan(app: FastAPI):
     # Startup
     await kafka_producer.connect()
     await rate_limiter.connect()
+    
+    # Initialize Telegram bot if configured
+    if settings.TELEGRAM_BOT_TOKEN:
+        from app.api.channels.telegram import telegram_service
+        telegram_service.init(settings.TELEGRAM_BOT_TOKEN)
+        telegram_service.register()
+        print("Telegram bot initialized")
+    
     yield
+    
     # Shutdown
     await kafka_producer.close()
     await rate_limiter.close()
@@ -54,6 +64,9 @@ app.add_middleware(AuthMiddleware)
 # Routes - OAuth (before auth middleware)
 app.include_router(oauth_router)
 
+# Routes - Telegram Webhook
+app.include_router(telegram_router)
+
 # Routes - API
 app.include_router(llm_router, prefix="/v1")
 app.include_router(claude_router)
@@ -79,6 +92,9 @@ async def health():
         "oauth": {
             "github": bool(settings.GITHUB_CLIENT_ID),
             "google": bool(settings.GOOGLE_CLIENT_ID),
+        },
+        "telegram": {
+            "enabled": bool(settings.TELEGRAM_BOT_TOKEN),
         },
     }
 
