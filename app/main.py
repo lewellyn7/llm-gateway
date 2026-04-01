@@ -18,6 +18,7 @@ from app.api.routes_embeddings import router as embeddings_router
 from app.api.routes_admin import router as admin_router
 from app.api.routes_oauth import router as oauth_router
 from app.api.routes_telegram import router as telegram_router
+from app.api.routes_rerank import router as rerank_router
 
 
 @asynccontextmanager
@@ -73,6 +74,7 @@ app.include_router(claude_router)
 app.include_router(tools_router, prefix="/api")
 app.include_router(media_router, prefix="/api")
 app.include_router(embeddings_router, prefix="/v1")
+app.include_router(rerank_router)
 
 # Routes - Admin
 app.include_router(admin_router)
@@ -88,6 +90,7 @@ async def health():
             "openai": bool(settings.OPENAI_API_KEY),
             "claude": bool(settings.ANTHROPIC_API_KEY),
             "vllm": bool(settings.VLLM_ENDPOINT),
+            "cohere": bool(settings.COHERE_API_KEY),
         },
         "oauth": {
             "github": bool(settings.GITHUB_CLIENT_ID),

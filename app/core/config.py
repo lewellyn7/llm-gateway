@@ -46,7 +46,10 @@ class Settings(BaseSettings):
     # Telegram Settings
     TELEGRAM_BOT_TOKEN: Optional[str] = None
     TELEGRAM_WEBHOOK_URL: Optional[str] = None
-    TELEGRAM_ALLOWED_CHATS: Optional[str] = None  # Comma-separated chat IDs
+    TELEGRAM_ALLOWED_CHATS: Optional[str] = None
+
+    # Cohere Rerank
+    COHERE_API_KEY: Optional[str] = None
 
     MODEL_RATES: dict = {
         "openai": {"gpt-4o": 0.03, "gpt-4o-mini": 0.0015},
