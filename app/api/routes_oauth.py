@@ -1,6 +1,6 @@
 """OAuth authentication routes."""
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from typing import Optional
@@ -9,19 +9,17 @@ from app.core.config import settings
 from app.core.security import create_access_token
 from app.services.oauth.github import GitHubOAuth
 from app.services.oauth.google import GoogleOAuth
+from app.services.oauth.user_handler import OAuthUserHandler
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-class OAuthCallback(BaseModel):
-    code: str
-    state: str
 
 
 class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: dict
+    api_key: Optional[str] = None
+    is_new_user: bool = False
 
 
 def get_github_oauth() -> GitHubOAuth:
@@ -66,17 +64,28 @@ async def github_callback(code: str, state: Optional[str] = None):
     # Get user info
     user_info = await oauth.get_user_info(access_token)
     
+    # Auto register/login user
+    result = await OAuthUserHandler.get_or_create_user(
+        provider=user_info["provider"],
+        provider_id=user_info["provider_id"],
+        email=user_info["email"],
+        name=user_info["name"],
+    )
+    
     # Create JWT token
     token_data = {
         "sub": user_info["email"],
         "provider": user_info["provider"],
         "provider_id": user_info["provider_id"],
+        "tenant_id": result["tenant"]["id"],
     }
     jwt_token = create_access_token(token_data)
     
     return AuthResponse(
         access_token=jwt_token,
-        user=user_info
+        user=result["tenant"],
+        api_key=result["api_key"],
+        is_new_user=result["is_new_user"],
     )
 
 
@@ -100,22 +109,41 @@ async def google_callback(code: str, state: Optional[str] = None):
     # Get user info
     user_info = await oauth.get_user_info(access_token)
     
+    # Auto register/login user
+    result = await OAuthUserHandler.get_or_create_user(
+        provider=user_info["provider"],
+        provider_id=user_info["provider_id"],
+        email=user_info["email"],
+        name=user_info["name"],
+    )
+    
     # Create JWT token
     token_data = {
         "sub": user_info["email"],
         "provider": user_info["provider"],
         "provider_id": user_info["provider_id"],
+        "tenant_id": result["tenant"]["id"],
     }
     jwt_token = create_access_token(token_data)
     
     return AuthResponse(
         access_token=jwt_token,
-        user=user_info
+        user=result["tenant"],
+        api_key=result["api_key"],
+        is_new_user=result["is_new_user"],
     )
 
 
-@router.post("/logout")
-async def logout(response: Response):
-    """Logout user by clearing cookie."""
-    response.delete_cookie("access_token")
-    return {"message": "Logged out successfully"}
+@router.get("/providers")
+async def list_oauth_providers():
+    """List available OAuth providers."""
+    return {
+        "github": {
+            "available": bool(settings.GITHUB_CLIENT_ID and settings.GITHUB_CLIENT_SECRET),
+            "url": "/auth/github",
+        },
+        "google": {
+            "available": bool(settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET),
+            "url": "/auth/google",
+        },
+    }
