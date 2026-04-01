@@ -22,6 +22,7 @@ from app.api.routes_telegram_admin import router as telegram_admin_router
 from app.api.routes_discord import router as discord_router
 from app.api.routes_rerank import router as rerank_router
 from app.api.routes_slack import router as slack_router
+from app.api.routes_logs import router as logs_router
 from app.api.routes_billing_reports import router as billing_reports_router
 from app.api.routes_websocket import router as websocket_router
 
@@ -80,6 +81,7 @@ app.include_router(embeddings_router, prefix="/v1")
 app.include_router(rerank_router)
 app.include_router(billing_reports_router)
 app.include_router(slack_router)
+app.include_router(logs_router)
 
 # Routes - Admin
 app.include_router(admin_router)
