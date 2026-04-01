@@ -1,4 +1,5 @@
 """Slack service for bot interactions."""
+
 import logging
 from typing import Optional
 
@@ -16,7 +17,9 @@ class SlackService:
         self.client_id: Optional[str] = None
         self.client_secret: Optional[str] = None
 
-    def configure(self, bot_token: str = None, client_id: str = None, client_secret: str = None):
+    def configure(
+        self, bot_token: str = None, client_id: str = None, client_secret: str = None
+    ):
         """Configure Slack service."""
         if bot_token:
             self.bot_token = bot_token

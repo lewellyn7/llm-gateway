@@ -1,4 +1,5 @@
 """Discord webhook handler for chat completions."""
+
 import logging
 from typing import Optional
 
@@ -15,6 +16,7 @@ llm_router = LLMRouter()
 
 class DiscordMessage(BaseModel):
     """Discord webhook message payload."""
+
     content: Optional[str] = None
     username: Optional[str] = None
     user_id: Optional[str] = None
@@ -22,12 +24,14 @@ class DiscordMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     """Chat request for Discord."""
+
     message: str
     model: Optional[str] = "gpt-4o"
 
 
 class DiscordWebhookPayload(BaseModel):
     """Discord webhook payload from their API."""
+
     id: Optional[str] = None
     channel_id: Optional[str] = None
     content: Optional[str] = None
@@ -66,25 +70,26 @@ async def discord_webhook(
                 payload.channel_id,
                 "**LLM Gateway Commands:**\n"
                 "/chat <message> - Chat with AI\n"
-                "/models - List available models"
+                "/models - List available models",
             )
             return {"ok": True}
         elif command == "/models":
             models = llm_router.list_models()
             await discord_service.send_message(
                 payload.channel_id,
-                "**Available Models:**\n" + "\n".join(f"- {m}" for m in models[:10])
+                "**Available Models:**\n" + "\n".join(f"- {m}" for m in models[:10]),
             )
             return {"ok": True}
 
     try:
         response = await process_discord_message(payload.content, user_id)
-        await discord_service.send_message(payload.channel_id, f"**{username}:** {response}")
+        await discord_service.send_message(
+            payload.channel_id, f"**{username}:** {response}"
+        )
     except Exception as e:
         logger.error(f"Error processing Discord message: {e}")
         await discord_service.send_message(
-            payload.channel_id,
-            "Sorry, I encountered an error processing your request."
+            payload.channel_id, "Sorry, I encountered an error processing your request."
         )
 
     return {"ok": True}

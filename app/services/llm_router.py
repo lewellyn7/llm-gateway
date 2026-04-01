@@ -267,7 +267,11 @@ class LLMRouter:
                         max_tokens=max_tokens or 1024,
                     )
                     formatted = self.providers["claude"].to_openai_format(result)
-                    content = formatted.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    content = (
+                        formatted.get("choices", [{}])[0]
+                        .get("message", {})
+                        .get("content", "")
+                    )
                     yield content
                     return
                 elif p == "vllm":

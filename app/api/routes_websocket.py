@@ -39,16 +39,16 @@ async def websocket_chat(
 ):
     """
     WebSocket endpoint for streaming chat completions.
-    
+
     Connect with: wss://domain.com/ws/v1/chat/stream?token=sk-xxx
-    
+
     Send JSON messages:
     {
         "type": "chat",
         "model": "gpt-4o-mini",
         "messages": [{"role": "user", "content": "Hello!"}]
     }
-    
+
     Receive streaming responses as SSE-like JSON.
     """
     client_id = f"{websocket.client.host}:{websocket.client.port}"
@@ -59,19 +59,25 @@ async def websocket_chat(
         # authenticated = True  # noqa: F841
         auth_message = await websocket.receive_text()
         auth_data = json.loads(auth_message)
-        
+
         if auth_data.get("type") == "auth":
             token = auth_data.get("token")
             if token:
                 from app.core.security import verify_token
+
                 try:
                     _ = verify_token(token)
                     await manager.send_json(websocket, {"type": "auth", "status": "ok"})
                 except Exception:
-                    await manager.send_json(websocket, {"type": "auth", "status": "error", "message": "Invalid token"})
+                    await manager.send_json(
+                        websocket,
+                        {"type": "auth", "status": "error", "message": "Invalid token"},
+                    )
                     return
         else:
-            await manager.send_json(websocket, {"type": "error", "message": "Expected auth message first"})
+            await manager.send_json(
+                websocket, {"type": "error", "message": "Expected auth message first"}
+            )
             return
 
         # Message handling loop
@@ -89,10 +95,9 @@ async def websocket_chat(
 
                 try:
                     # Send "start" event
-                    await manager.send_json(websocket, {
-                        "type": "start",
-                        "model": model
-                    })
+                    await manager.send_json(
+                        websocket, {"type": "start", "model": model}
+                    )
 
                     # Stream response
                     full_content = ""
@@ -102,23 +107,20 @@ async def websocket_chat(
                         temperature=temperature,
                         max_tokens=max_tokens,
                     ):
-                        await manager.send_json(websocket, {
-                            "type": "content",
-                            "content": chunk
-                        })
+                        await manager.send_json(
+                            websocket, {"type": "content", "content": chunk}
+                        )
                         full_content += chunk
 
                     # Send "done" event
-                    await manager.send_json(websocket, {
-                        "type": "done",
-                        "content": full_content
-                    })
+                    await manager.send_json(
+                        websocket, {"type": "done", "content": full_content}
+                    )
 
                 except Exception as e:
-                    await manager.send_json(websocket, {
-                        "type": "error",
-                        "message": str(e)
-                    })
+                    await manager.send_json(
+                        websocket, {"type": "error", "message": str(e)}
+                    )
 
             elif message.get("type") == "ping":
                 await manager.send_json(websocket, {"type": "pong"})
@@ -147,16 +149,20 @@ async def websocket_completions(
         # Authenticate
         auth_message = await websocket.receive_text()
         auth_data = json.loads(auth_message)
-        
+
         if auth_data.get("type") == "auth":
             token = auth_data.get("token")
             if token:
                 from app.core.security import verify_token
+
                 try:
                     _ = verify_token(token)
                     await manager.send_json(websocket, {"type": "auth", "status": "ok"})
                 except Exception:
-                    await manager.send_json(websocket, {"type": "auth", "status": "error", "message": "Invalid token"})
+                    await manager.send_json(
+                        websocket,
+                        {"type": "auth", "status": "error", "message": "Invalid token"},
+                    )
                     return
 
         # Message handling loop
@@ -173,7 +179,7 @@ async def websocket_completions(
 
                 try:
                     await manager.send_json(websocket, {"type": "start"})
-                    
+
                     messages = [{"role": "user", "content": prompt}]
                     full_content = ""
                     async for chunk in router_svc.stream_chat(
@@ -181,12 +187,18 @@ async def websocket_completions(
                         messages=messages,
                         max_tokens=max_tokens,
                     ):
-                        await manager.send_json(websocket, {"type": "content", "content": chunk})
+                        await manager.send_json(
+                            websocket, {"type": "content", "content": chunk}
+                        )
                         full_content += chunk
 
-                    await manager.send_json(websocket, {"type": "done", "content": full_content})
+                    await manager.send_json(
+                        websocket, {"type": "done", "content": full_content}
+                    )
                 except Exception as e:
-                    await manager.send_json(websocket, {"type": "error", "message": str(e)})
+                    await manager.send_json(
+                        websocket, {"type": "error", "message": str(e)}
+                    )
 
     except WebSocketDisconnect:
         pass

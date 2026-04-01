@@ -1,4 +1,5 @@
 """Discord service for handling bot interactions."""
+
 import logging
 from typing import Optional
 
@@ -78,7 +79,9 @@ class DiscordService:
                 logger.error(f"Discord send message failed: {e}")
                 return False
 
-    async def create_webhook(self, channel_id: str, name: str = "llm-gateway") -> Optional[str]:
+    async def create_webhook(
+        self, channel_id: str, name: str = "llm-gateway"
+    ) -> Optional[str]:
         """Create webhook in a channel."""
         if not self.bot_token:
             return None

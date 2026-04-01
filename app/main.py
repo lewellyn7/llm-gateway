@@ -33,9 +33,9 @@ async def lifespan(app: FastAPI):
     # Startup
     await kafka_producer.connect()
     await rate_limiter.connect()
-    
+
     yield
-    
+
     # Shutdown
     await kafka_producer.close()
     await rate_limiter.close()
@@ -103,10 +103,7 @@ async def health():
             "github": bool(settings.GITHUB_CLIENT_ID),
             "google": bool(settings.GOOGLE_CLIENT_ID),
         },
-        "websocket": {
-            "enabled": True,
-            "endpoint": "/ws/v1/chat/stream"
-        }
+        "websocket": {"enabled": True, "endpoint": "/ws/v1/chat/stream"},
     }
 
 

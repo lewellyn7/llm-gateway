@@ -1,4 +1,5 @@
 """Log query interface API."""
+
 import logging
 from datetime import datetime, timedelta
 from enum import Enum
@@ -13,6 +14,7 @@ router = APIRouter(prefix="/v1/logs", tags=["logs"])
 
 class LogLevel(str, Enum):
     """Log level enum."""
+
     DEBUG = "DEBUG"
     INFO = "INFO"
     WARNING = "WARNING"
@@ -22,6 +24,7 @@ class LogLevel(str, Enum):
 
 class LogEntry(BaseModel):
     """Single log entry."""
+
     timestamp: str
     level: str
     service: str
@@ -36,6 +39,7 @@ class LogEntry(BaseModel):
 
 class LogQueryResponse(BaseModel):
     """Log query response."""
+
     total: int
     page: int
     page_size: int
@@ -67,6 +71,7 @@ def generate_mock_logs(
     num_logs = min(limit, max(50, int(delta.total_seconds()) // 60))
 
     import random
+
     random.seed(42)
 
     for i in range(num_logs):

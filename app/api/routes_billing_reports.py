@@ -1,4 +1,5 @@
 """Billing reports API."""
+
 import logging
 from datetime import datetime, timedelta
 from typing import Optional
@@ -15,6 +16,7 @@ llm_router = LLMRouter()
 
 class UsageRecord(BaseModel):
     """Single usage record."""
+
     date: str
     provider: str
     model: str
@@ -25,6 +27,7 @@ class UsageRecord(BaseModel):
 
 class DailySummary(BaseModel):
     """Daily usage summary."""
+
     date: str
     total_requests: int
     total_tokens: int
@@ -34,6 +37,7 @@ class DailySummary(BaseModel):
 
 class BillingReport(BaseModel):
     """Billing report response."""
+
     start_date: str
     end_date: str
     total_requests: int
@@ -73,9 +77,7 @@ PRICING = {
 
 def estimate_cost(provider: str, model: str, tokens: int) -> float:
     """Estimate cost based on provider and model."""
-    price_per_1k = (
-        PRICING.get(provider, {}).get(model, 0.001) / 1000
-    )
+    price_per_1k = PRICING.get(provider, {}).get(model, 0.001) / 1000
     return tokens * price_per_1k
 
 
@@ -115,7 +117,7 @@ async def get_billing_report(
 
         providers = ["openai", "claude", "vllm", "azure", "moonshot"]
         by_p = {}
-        for p in providers[:(i % 3) + 2]:
+        for p in providers[: (i % 3) + 2]:
             p_tokens = tokens_day // ((i % 3) + 2)
             p_cost = estimate_cost(p, "default", p_tokens)
             by_p[p] = {"tokens": p_tokens, "cost": p_cost}
@@ -123,13 +125,15 @@ async def get_billing_report(
             by_provider[p]["tokens"] += p_tokens
             by_provider[p]["cost"] += p_cost
 
-        daily_breakdown.append(DailySummary(
-            date=day_str,
-            total_requests=requests_day,
-            total_tokens=tokens_day,
-            total_cost_usd=round(cost_day, 4),
-            by_provider=by_p,
-        ))
+        daily_breakdown.append(
+            DailySummary(
+                date=day_str,
+                total_requests=requests_day,
+                total_tokens=tokens_day,
+                total_cost_usd=round(cost_day, 4),
+                by_provider=by_p,
+            )
+        )
 
         by_model["gpt-4o"] = by_model.get("gpt-4o", {"tokens": 0, "cost": 0.0})
         by_model["gpt-4o"]["tokens"] += tokens_day // 2

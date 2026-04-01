@@ -1,4 +1,5 @@
 """Slack webhook handler for chat completions."""
+
 import logging
 from typing import Optional
 
@@ -15,6 +16,7 @@ llm_router = LLMRouter()
 
 class SlackMessage(BaseModel):
     """Slack message payload."""
+
     type: str
     channel: str
     user: str
@@ -24,6 +26,7 @@ class SlackMessage(BaseModel):
 
 class SlackWebhookPayload(BaseModel):
     """Slack webhook payload."""
+
     type: Optional[str] = None
     challenge: Optional[str] = None
     token: Optional[str] = None
@@ -64,14 +67,14 @@ async def slack_webhook(request: Request):
                 channel,
                 "*LLM Gateway Commands:*\n"
                 "/chat <message> - Chat with AI\n"
-                "/models - List available models"
+                "/models - List available models",
             )
             return {"ok": True}
         elif text.startswith("/models"):
             models = llm_router.list_models()
             await slack_service.post_message(
                 channel,
-                "*Available Models:*\n" + "\n".join(f"• {m}" for m in models[:10])
+                "*Available Models:*\n" + "\n".join(f"• {m}" for m in models[:10]),
             )
             return {"ok": True}
 
@@ -90,7 +93,9 @@ async def slack_webhook(request: Request):
         text = event.get("text", "")
 
         if "hello" in text.lower() or "hi" in text.lower():
-            await slack_service.post_message(channel, f"Hi <@{user}>! Use @llm-gateway to chat with me.")
+            await slack_service.post_message(
+                channel, f"Hi <@{user}>! Use @llm-gateway to chat with me."
+            )
             return {"ok": True}
 
     return {"ok": True}
