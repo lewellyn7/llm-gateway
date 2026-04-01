@@ -20,6 +20,7 @@ from app.api.routes_oauth import router as oauth_router
 from app.api.routes_telegram import router as telegram_router
 from app.api.routes_telegram_admin import router as telegram_admin_router
 from app.api.routes_rerank import router as rerank_router
+from app.api.routes_websocket import router as websocket_router
 
 
 @asynccontextmanager
@@ -28,9 +29,9 @@ async def lifespan(app: FastAPI):
     # Startup
     await kafka_producer.connect()
     await rate_limiter.connect()
-
+    
     yield
-
+    
     # Shutdown
     await kafka_producer.close()
     await rate_limiter.close()
@@ -63,6 +64,9 @@ app.include_router(oauth_router)
 app.include_router(telegram_router)
 app.include_router(telegram_admin_router)
 
+# Routes - WebSocket
+app.include_router(websocket_router)
+
 # Routes - API
 app.include_router(llm_router, prefix="/v1")
 app.include_router(claude_router)
@@ -91,6 +95,10 @@ async def health():
             "github": bool(settings.GITHUB_CLIENT_ID),
             "google": bool(settings.GOOGLE_CLIENT_ID),
         },
+        "websocket": {
+            "enabled": True,
+            "endpoint": "/ws/v1/chat/stream"
+        }
     }
 
 

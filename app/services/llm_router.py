@@ -216,3 +216,51 @@ class LLMRouter:
             },
             "strategy": self.strategy,
         }
+
+    async def stream_chat(
+        self,
+        model: str,
+        messages: list,
+        temperature: float = 1.0,
+        max_tokens: int = 4096,
+    ) -> AsyncIterator[str]:
+        """Streaming chat completion - yields text chunks."""
+        provider = self.get_provider_for_model(model)
+        order = self.get_provider_order(provider)
+
+        for p in order:
+            try:
+                if p == "openai":
+                    async for chunk in self.providers["openai"].chat_completions_stream(
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                    ):
+                        yield chunk
+                    return
+                elif p == "claude":
+                    result = await self.providers["claude"].messages(
+                        model=model,
+                        messages=self._convert_to_claude_format(messages),
+                        temperature=temperature,
+                        max_tokens=max_tokens or 1024,
+                    )
+                    formatted = self.providers["claude"].to_openai_format(result)
+                    content = formatted.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    yield content
+                    return
+                elif p == "vllm":
+                    async for chunk in self.providers["vllm"].chat_completions_stream(
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens or 2048,
+                    ):
+                        yield chunk
+                    return
+            except Exception as e:
+                print(f"Provider {p} failed: {e}")
+                continue
+
+        yield "Error: All providers failed"
