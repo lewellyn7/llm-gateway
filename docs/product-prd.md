@@ -315,3 +315,166 @@ Authorization: Bearer {api_key}
 - [ ] Docker 一键部署
 - [ ] CI/CD 全流程通过
 - [ ] Health Check 正常
+
+---
+
+## 十一、聊天渠道集成
+
+### 11.1 Telegram Bot
+
+| 功能 | 状态 | 说明 |
+|------|------|------|
+| Webhook 接收 | ✅ | `/webhook/telegram/{token}` |
+| 自动回复 | ✅ | LLM 处理消息 |
+| Markdown 支持 | ✅ | 格式解析 |
+| 流式响应 | ✅ | typing indicator |
+| 消息拆分 | ✅ | 超过 4096 字符自动拆分 |
+
+**配置项：**
+```bash
+TELEGRAM_BOT_TOKEN=xxx
+TELEGRAM_WEBHOOK_URL=https://domain.com/webhook/telegram/xxx
+TELEGRAM_ALLOWED_CHATS=123,456
+```
+
+### 11.2 API 端点
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/webhook/telegram/{token}` | POST | 接收 Telegram 更新 |
+| `/webhook/telegram/setup` | GET | 设置 Webhook |
+| `/webhook/telegram/info` | GET | Bot 信息 |
+| `/webhook/telegram/send` | POST | 发送消息 |
+
+---
+
+## 十二、Rerank 模型
+
+### 12.1 Provider
+
+| Provider | 模型 | 状态 |
+|----------|------|------|
+| Cohere | rerank-english-v2.0 | ✅ |
+| Cohere | rerank-multilingual-v2.0 | 🔄 |
+
+### 12.2 API 端点
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/v1/rerank` | POST | 带认证的 Rerank |
+| `/v1/rerank/simple` | POST | 测试用简化版 |
+
+### 12.3 请求格式
+
+```json
+{
+  "query": "search query",
+  "documents": ["doc1", "doc2", ...],
+  "model": "rerank-english-v2.0",
+  "top_n": 3
+}
+```
+
+### 12.4 响应格式
+
+```json
+{
+  "id": "xxx",
+  "results": [
+    {"index": 0, "document": "doc1", "relevance_score": 0.95}
+  ]
+}
+```
+
+---
+
+## 十三、功能完成度总览
+
+### 13.1 核心功能 (Core)
+
+| 模块 | 功能 | 状态 | 备注 |
+|------|------|------|------|
+| **API** | Chat Completions | ✅ | OpenAI 兼容 |
+| | Embeddings | ✅ | |
+| | Models List | ✅ | |
+| | Streaming | ✅ | SSE |
+| | Tool Calling | ✅ | |
+| | Rerank | ✅ | Cohere |
+| **Provider** | OpenAI | ✅ | |
+| | Claude | ✅ | |
+| | vLLM | ✅ | |
+| | Azure OpenAI | ❌ | |
+| **路由** | Cost 策略 | ✅ | |
+| | Latency 策略 | ✅ | |
+| | Quality 策略 | ✅ | |
+| | Balanced 策略 | ✅ | |
+
+### 13.2 多租户 (Multi-Tenant)
+
+| 模块 | 功能 | 状态 | 备注 |
+|------|------|------|------|
+| | 租户管理 | ✅ | CRUD |
+| | API Key | ✅ | 生成/撤销 |
+| | 配额管理 | ✅ | 限额/用量 |
+| | OAuth 注册 | ✅ | GitHub/Google |
+
+### 13.3 计费 (Billing)
+
+| 模块 | 功能 | 状态 | 备注 |
+|------|------|------|------|
+| | Token 计费 | ✅ | |
+| | 用量记录 | ✅ | |
+| | 成本统计 | ✅ | |
+| | 计费报表 | ❌ | |
+
+### 13.4 中间件 (Middleware)
+
+| 模块 | 功能 | 状态 |
+|------|------|------|
+| | Auth | ✅ |
+| | Rate Limit | ✅ |
+| | Usage | ✅ |
+| | Trace | ✅ |
+| | Quota | ✅ |
+
+### 13.5 渠道 (Channels)
+
+| 模块 | 功能 | 状态 |
+|------|------|------|
+| | Telegram Bot | ✅ |
+| | Discord | ❌ |
+| | Slack | ❌ |
+
+### 13.6 DevOps
+
+| 模块 | 功能 | 状态 |
+|------|------|------|
+| | Docker | ✅ |
+| | Docker Compose | ✅ |
+| | CI/CD | ✅ |
+
+---
+
+## 十四、待完成功能
+
+| 功能 | 优先级 | 复杂度 | 预计工时 |
+|------|--------|--------|----------|
+| Azure OpenAI 接入 | P2 | 中 | 4h |
+| 计费报表 | P2 | 中 | 6h |
+| Discord 渠道 | P2 | 低 | 2h |
+| Slack 渠道 | P2 | 低 | 2h |
+| Cohere Rerank v3 | P1 | 低 | 2h |
+| 日志查询界面 | P2 | 高 | 8h |
+| WebSocket 流式输出 | P1 | 中 | 4h |
+
+---
+
+## 十五、里程碑
+
+| 阶段 | 内容 | 状态 |
+|------|------|------|
+| M1 | 核心 API + Provider + 路由 | ✅ 完成 |
+| M2 | 多租户 + 计费 + 中间件 | ✅ 完成 |
+| M3 | OAuth + Telegram + UI | ✅ 完成 |
+| M4 | Rerank + 渠道扩展 | ✅ 完成 |
+| M5 | Azure + 报表 + WebSocket | 🔄 进行中 |
