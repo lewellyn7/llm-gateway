@@ -19,6 +19,7 @@ from app.api.routes_admin import router as admin_router
 from app.api.routes_oauth import router as oauth_router
 from app.api.routes_telegram import router as telegram_router
 from app.api.routes_telegram_admin import router as telegram_admin_router
+from app.api.routes_discord import router as discord_router
 from app.api.routes_rerank import router as rerank_router
 from app.api.routes_websocket import router as websocket_router
 
@@ -63,6 +64,7 @@ app.include_router(oauth_router)
 # Routes - Telegram
 app.include_router(telegram_router)
 app.include_router(telegram_admin_router)
+app.include_router(discord_router)
 
 # Routes - WebSocket
 app.include_router(websocket_router)
