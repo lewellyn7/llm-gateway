@@ -1,4 +1,5 @@
 """OAuth service module."""
+
 from app.services.oauth.base import OAuthProvider
 from app.services.oauth.github import GitHubOAuth
 from app.services.oauth.google import GoogleOAuth

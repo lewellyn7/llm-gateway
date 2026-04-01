@@ -1,6 +1,16 @@
 """Database models."""
+
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Float, Enum as SQLEnum
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Float,
+    Enum as SQLEnum,
+)
 from sqlalchemy.orm import relationship, DeclarativeBase
 import enum
 
@@ -24,7 +34,11 @@ class Tenant(Base):
     plan = Column(SQLEnum(PlanType), default=PlanType.FREE, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     api_keys = relationship("APIKey", back_populates="tenant")
     usage_records = relationship("UsageRecord", back_populates="tenant")
@@ -60,7 +74,9 @@ class UsageRecord(Base):
     latency_ms = Column(Float, default=0.0)
     status = Column(String(20), default="success")
     trace_id = Column(String(100), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc), index=True
+    )
 
     tenant = relationship("Tenant", back_populates="usage_records")
 

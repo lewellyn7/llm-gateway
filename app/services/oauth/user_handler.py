@@ -10,15 +10,18 @@ class OAuthUserHandler:
     """Handle OAuth user creation and login."""
 
     @staticmethod
-    async def get_or_create_user(provider: str, provider_id: str, email: str, name: str) -> dict:
+    async def get_or_create_user(
+        provider: str, provider_id: str, email: str, name: str
+    ) -> dict:
         """
         Get existing user or create new one from OAuth.
-        
+
         Returns dict with user info and API key.
         """
         async with AsyncSessionLocal() as db:
             # Check if tenant exists by email
             from sqlalchemy import select
+
             stmt = select(Tenant).where(Tenant.email == email)
             result = await db.execute(stmt)
             tenant = result.scalar_one_or_none()

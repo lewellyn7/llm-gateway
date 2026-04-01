@@ -29,7 +29,7 @@ def get_github_oauth() -> GitHubOAuth:
     return GitHubOAuth(
         client_id=settings.GITHUB_CLIENT_ID,
         client_secret=settings.GITHUB_CLIENT_SECRET,
-        redirect_uri=f"{settings.APP_URL}/auth/github/callback"
+        redirect_uri=f"{settings.APP_URL}/auth/github/callback",
     )
 
 
@@ -40,7 +40,7 @@ def get_google_oauth() -> GoogleOAuth:
     return GoogleOAuth(
         client_id=settings.GOOGLE_CLIENT_ID,
         client_secret=settings.GOOGLE_CLIENT_SECRET,
-        redirect_uri=f"{settings.APP_URL}/auth/google/callback"
+        redirect_uri=f"{settings.APP_URL}/auth/google/callback",
     )
 
 
@@ -57,13 +57,13 @@ async def github_login():
 async def github_callback(code: str, state: Optional[str] = None):
     """Handle GitHub OAuth callback."""
     oauth = get_github_oauth()
-    
+
     # Exchange code for token
     access_token = await oauth.get_access_token(code)
-    
+
     # Get user info
     user_info = await oauth.get_user_info(access_token)
-    
+
     # Auto register/login user
     result = await OAuthUserHandler.get_or_create_user(
         provider=user_info["provider"],
@@ -71,7 +71,7 @@ async def github_callback(code: str, state: Optional[str] = None):
         email=user_info["email"],
         name=user_info["name"],
     )
-    
+
     # Create JWT token
     token_data = {
         "sub": user_info["email"],
@@ -80,7 +80,7 @@ async def github_callback(code: str, state: Optional[str] = None):
         "tenant_id": result["tenant"]["id"],
     }
     jwt_token = create_access_token(token_data)
-    
+
     return AuthResponse(
         access_token=jwt_token,
         user=result["tenant"],
@@ -102,13 +102,13 @@ async def google_login():
 async def google_callback(code: str, state: Optional[str] = None):
     """Handle Google OAuth callback."""
     oauth = get_google_oauth()
-    
+
     # Exchange code for token
     access_token = await oauth.get_access_token(code)
-    
+
     # Get user info
     user_info = await oauth.get_user_info(access_token)
-    
+
     # Auto register/login user
     result = await OAuthUserHandler.get_or_create_user(
         provider=user_info["provider"],
@@ -116,7 +116,7 @@ async def google_callback(code: str, state: Optional[str] = None):
         email=user_info["email"],
         name=user_info["name"],
     )
-    
+
     # Create JWT token
     token_data = {
         "sub": user_info["email"],
@@ -125,7 +125,7 @@ async def google_callback(code: str, state: Optional[str] = None):
         "tenant_id": result["tenant"]["id"],
     }
     jwt_token = create_access_token(token_data)
-    
+
     return AuthResponse(
         access_token=jwt_token,
         user=result["tenant"],
@@ -139,11 +139,15 @@ async def list_oauth_providers():
     """List available OAuth providers."""
     return {
         "github": {
-            "available": bool(settings.GITHUB_CLIENT_ID and settings.GITHUB_CLIENT_SECRET),
+            "available": bool(
+                settings.GITHUB_CLIENT_ID and settings.GITHUB_CLIENT_SECRET
+            ),
             "url": "/auth/github",
         },
         "google": {
-            "available": bool(settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET),
+            "available": bool(
+                settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET
+            ),
             "url": "/auth/google",
         },
     }

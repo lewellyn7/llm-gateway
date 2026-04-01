@@ -1,4 +1,5 @@
 """Quota middleware."""
+
 from fastapi import Request, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.db.session import AsyncSessionLocal
@@ -25,7 +26,7 @@ class QuotaMiddleware(BaseHTTPMiddleware):
         # Check quota
         async with AsyncSessionLocal() as db:
             quota = await get_quota_by_tenant_id(db, tenant_id)
-            
+
             if quota:
                 # Check if quota exceeded
                 if quota.used >= quota.monthly_limit:
@@ -35,10 +36,10 @@ class QuotaMiddleware(BaseHTTPMiddleware):
                         headers={
                             "X-Quota-Limit": str(quota.monthly_limit),
                             "X-Quota-Used": str(quota.used),
-                            "X-Quota-Remaining": "0"
-                        }
+                            "X-Quota-Remaining": "0",
+                        },
                     )
-                
+
                 # Add quota info to response headers
                 response = await call_next(request)
                 remaining = quota.monthly_limit - quota.used

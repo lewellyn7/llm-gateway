@@ -39,12 +39,12 @@ class GitHubOAuth(OAuthProvider):
     async def get_user_info(self, access_token: str) -> dict:
         """Get user info from GitHub."""
         user_data = await self.get_json(self.USER_URL, access_token)
-        
+
         # Get primary email
         emails = await self.get_json(self.EMAIL_URL, access_token)
         primary_email = next(
             (e["email"] for e in emails if e.get("primary") and e.get("verified")),
-            user_data.get("email", "")
+            user_data.get("email", ""),
         )
 
         return {

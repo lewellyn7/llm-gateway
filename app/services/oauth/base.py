@@ -30,6 +30,7 @@ class OAuthProvider(ABC):
     def generate_state(self) -> str:
         """Generate a random state parameter for CSRF protection."""
         import secrets
+
         return secrets.token_urlsafe(32)
 
     async def exchange_code_for_token(self, token_url: str, data: dict) -> dict:
@@ -39,7 +40,7 @@ class OAuthProvider(ABC):
                 token_url,
                 data=data,
                 headers={"Accept": "application/json"},
-                timeout=10.0
+                timeout=10.0,
             )
             response.raise_for_status()
             return response.json()
@@ -51,9 +52,9 @@ class OAuthProvider(ABC):
                 url,
                 headers={
                     "Authorization": f"Bearer {access_token}",
-                    "Accept": "application/json"
+                    "Accept": "application/json",
                 },
-                timeout=10.0
+                timeout=10.0,
             )
             response.raise_for_status()
             return response.json()

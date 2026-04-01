@@ -1,4 +1,5 @@
 """Admin API routes."""
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -49,13 +50,36 @@ class QuotaResponse(BaseModel):
 
 # In-memory demo data
 TENANTS = [
-    {"id": 1, "name": "文杨科技", "email": "wy@example.com", "plan": "pro", "is_active": True, "created_at": "2026-03-01"}
+    {
+        "id": 1,
+        "name": "文杨科技",
+        "email": "wy@example.com",
+        "plan": "pro",
+        "is_active": True,
+        "created_at": "2026-03-01",
+    }
 ]
 API_KEYS = [
-    {"id": 1, "key": "sk-demo-abc123", "key_prefix": "sk-demo", "tenant_id": 1, "tenant_name": "文杨科技", "created_at": "2026-03-01", "is_active": True}
+    {
+        "id": 1,
+        "key": "sk-demo-abc123",
+        "key_prefix": "sk-demo",
+        "tenant_id": 1,
+        "tenant_name": "文杨科技",
+        "created_at": "2026-03-01",
+        "is_active": True,
+    }
 ]
 QUOTAS = {
-    1: {"tenant_id": 1, "tenant_name": "文杨科技", "monthly_limit": 100000, "used": 4567, "remaining": 95433, "reset_at": "2026-04-01", "plan": "pro"}
+    1: {
+        "tenant_id": 1,
+        "tenant_name": "文杨科技",
+        "monthly_limit": 100000,
+        "used": 4567,
+        "remaining": 95433,
+        "reset_at": "2026-04-01",
+        "plan": "pro",
+    }
 }
 
 
@@ -74,7 +98,7 @@ async def get_stats():
         "tenants": len(TENANTS),
         "api_keys": len(API_KEYS),
         "requests_today": 1234,
-        "monthly_cost": "23.45"
+        "monthly_cost": "23.45",
     }
 
 
@@ -93,10 +117,10 @@ async def create_tenant(data: TenantCreate):
         "email": data.email,
         "plan": data.plan,
         "is_active": True,
-        "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
     }
     TENANTS.append(tenant)
-    
+
     # Create default quota based on plan
     limits = {"free": 10000, "pro": 100000, "enterprise": 1000000}
     QUOTAS[tenant["id"]] = {
@@ -105,10 +129,12 @@ async def create_tenant(data: TenantCreate):
         "monthly_limit": limits.get(data.plan, 10000),
         "used": 0,
         "remaining": limits.get(data.plan, 10000),
-        "reset_at": (datetime.now(timezone.utc) + timedelta(days=30)).strftime("%Y-%m-%d"),
-        "plan": data.plan
+        "reset_at": (datetime.now(timezone.utc) + timedelta(days=30)).strftime(
+            "%Y-%m-%d"
+        ),
+        "plan": data.plan,
     }
-    
+
     return tenant
 
 
@@ -133,9 +159,10 @@ async def list_keys():
 async def create_key(data: APIKeyCreate):
     """Create a new API key."""
     import secrets
+
     key = f"sk-{secrets.token_urlsafe(32)}"
     tenant = next((t for t in TENANTS if t["id"] == data.tenant_id), None)
-    
+
     api_key = {
         "id": get_next_key_id(),
         "key": key,
@@ -143,7 +170,7 @@ async def create_key(data: APIKeyCreate):
         "tenant_id": data.tenant_id,
         "tenant_name": tenant["name"] if tenant else "Unknown",
         "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-        "is_active": True
+        "is_active": True,
     }
     API_KEYS.append(api_key)
     return api_key
@@ -193,7 +220,7 @@ async def get_usage():
             "total_tokens": 1234567,
             "total_cost": "234.56",
             "by_provider": {"openai": 0.6, "claude": 0.3, "vllm": 0.1},
-            "by_model": {"gpt-4o": 0.4, "claude-3-5-sonnet": 0.3, "llama-3-70b": 0.3}
+            "by_model": {"gpt-4o": 0.4, "claude-3-5-sonnet": 0.3, "llama-3-70b": 0.3},
         }
     }
 
