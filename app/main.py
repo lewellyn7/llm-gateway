@@ -16,6 +16,7 @@ from app.api.routes_tools import router as tools_router
 from app.api.routes_media import router as media_router
 from app.api.routes_embeddings import router as embeddings_router
 from app.api.routes_admin import router as admin_router
+from app.api.routes_oauth import router as oauth_router
 
 
 @asynccontextmanager
@@ -50,6 +51,9 @@ app.add_middleware(TraceMiddleware)
 app.add_middleware(UsageMiddleware)
 app.add_middleware(AuthMiddleware)
 
+# Routes - OAuth (before auth middleware)
+app.include_router(oauth_router)
+
 # Routes - API
 app.include_router(llm_router, prefix="/v1")
 app.include_router(claude_router)
@@ -71,6 +75,10 @@ async def health():
             "openai": bool(settings.OPENAI_API_KEY),
             "claude": bool(settings.ANTHROPIC_API_KEY),
             "vllm": bool(settings.VLLM_ENDPOINT),
+        },
+        "oauth": {
+            "github": bool(settings.GITHUB_CLIENT_ID),
+            "google": bool(settings.GOOGLE_CLIENT_ID),
         },
     }
 

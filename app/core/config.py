@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     APP_NAME: str = "LLM Gateway"
     APP_VERSION: str = "1.0.0"
+    APP_URL: str = "http://localhost:8000"
     DEBUG: bool = False
     HOST: str = "0.0.0.0"
     PORT: int = 8000
@@ -35,6 +36,12 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     ANTHROPIC_API_KEY: Optional[str] = None
     VLLM_ENDPOINT: Optional[str] = None
+
+    # OAuth Settings
+    GITHUB_CLIENT_ID: Optional[str] = None
+    GITHUB_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
 
     MODEL_RATES: dict = {
         "openai": {"gpt-4o": 0.03, "gpt-4o-mini": 0.0015},
