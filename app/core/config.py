@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: Optional[str] = None
     VLLM_ENDPOINT: Optional[str] = None
 
+    # Azure OpenAI
+    AZURE_OPENAI_API_KEY: Optional[str] = None
+    AZURE_OPENAI_ENDPOINT: Optional[str] = None
+    AZURE_OPENAI_VERSION: str = "2024-02-01"
+
     # OAuth Settings
     GITHUB_CLIENT_ID: Optional[str] = None
     GITHUB_CLIENT_SECRET: Optional[str] = None
@@ -55,6 +60,7 @@ class Settings(BaseSettings):
         "openai": {"gpt-4o": 0.03, "gpt-4o-mini": 0.0015},
         "claude": {"claude-3-5-sonnet": 0.02},
         "vllm": {"local": 0.001},
+        "azure": {"gpt-4o": 0.03, "gpt-4o-mini": 0.0015},
     }
 
 

@@ -6,6 +6,7 @@ from app.services.router_engine import RouterEngine
 from app.providers.openai_client import OpenAIClient
 from app.providers.claude_client import ClaudeClient
 from app.providers.vllm_client import VLLMClient
+from app.providers.azure.client import AzureOpenAIClient
 from app.core.config import settings
 
 
@@ -38,7 +39,14 @@ class LLMRouter:
         if settings.VLLM_ENDPOINT:
             self.providers["vllm"] = VLLMClient(settings.VLLM_ENDPOINT)
 
-        self._default_chain = ["vllm", "claude", "openai"]
+        if settings.AZURE_OPENAI_API_KEY and settings.AZURE_OPENAI_ENDPOINT:
+            self.providers["azure"] = AzureOpenAIClient(
+                api_key=settings.AZURE_OPENAI_API_KEY,
+                endpoint=settings.AZURE_OPENAI_ENDPOINT,
+                api_version=settings.AZURE_OPENAI_VERSION,
+            )
+
+        self._default_chain = ["vllm", "claude", "openai", "azure"]
 
     def get_provider_for_model(self, model: str) -> str:
         """Map model to provider."""
@@ -54,6 +62,8 @@ class LLMRouter:
             return "deepseek"
         elif model_lower.startswith("moonshot"):
             return "moonshot"
+        elif model_lower.startswith("azure"):
+            return "azure"
         else:
             return "vllm"
 
@@ -174,6 +184,15 @@ class LLMRouter:
                     ):
                         yield chunk
                     return
+                elif p == "azure":
+                    async for chunk in self.providers["azure"].chat_completions_stream(
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                    ):
+                        yield chunk
+                    return
             except Exception as e:
                 print(f"Provider {p} failed, trying fallback: {e}")
                 continue
@@ -208,11 +227,12 @@ class LLMRouter:
         """Get provider capabilities."""
         return {
             "providers": self.list_available_providers(),
-            "streaming": ["openai", "vllm"],
+            "streaming": ["openai", "vllm", "azure"],
             "models": {
                 "openai": ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"],
                 "claude": ["claude-3-5-sonnet", "claude-3-opus", "claude-3-haiku"],
                 "vllm": ["llama-3-70b", "llama-3-8b", "qwen-72b"],
+                "azure": ["gpt-4o", "gpt-4o-mini", "gpt-35-turbo"],
             },
             "strategy": self.strategy,
         }
@@ -256,6 +276,15 @@ class LLMRouter:
                         messages=messages,
                         temperature=temperature,
                         max_tokens=max_tokens or 2048,
+                    ):
+                        yield chunk
+                    return
+                elif p == "azure":
+                    async for chunk in self.providers["azure"].chat_completions_stream(
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
                     ):
                         yield chunk
                     return
