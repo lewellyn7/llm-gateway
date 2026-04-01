@@ -428,6 +428,106 @@
                     </div>
                 </div>
 
+                <!-- Telegram Tab -->
+                <div v-if="currentTab === 'telegram'" class="animate-fade-in">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Settings Card -->
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                            <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30">
+                                <h2 class="font-bold text-gray-800 dark:text-white flex items-center gap-2"><span>📱</span> Telegram 设置</h2>
+                            </div>
+                            <div class="p-6 space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h3 class="font-medium text-gray-800 dark:text-white">Bot 状态</h3>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ telegramStatus.configured ? '已配置' : '未配置' }}</p>
+                                    </div>
+                                    <span :class="telegramStatus.configured ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'bg-gray-100 text-gray-500'"
+                                        class="px-3 py-1 rounded-full text-sm font-medium">
+                                        {{ telegramStatus.configured ? '✓ 已连接' : '✗ 未连接' }}
+                                    </span>
+                                </div>
+
+                                <div v-if="telegramStatus.bot_info" class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                    <p class="text-sm text-gray-600 dark:text-gray-300">
+                                        <strong>{{ telegramStatus.bot_info.first_name }}</strong> (@{{ telegramStatus.bot_info.username }})
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bot Token</label>
+                                    <input v-model="telegramSettings.bot_token" type="password" 
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                                        placeholder="123456:ABC-DEF...">
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Webhook URL</label>
+                                    <input v-model="telegramSettings.webhook_url" type="url"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                                        placeholder="https://your-domain.com/webhook/telegram/...">
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">允许的 Chat IDs（逗号分隔）</label>
+                                    <input v-model="telegramAllowedInput" type="text"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                                        placeholder="123456789, 987654321">
+                                </div>
+
+                                <div class="flex gap-3 pt-4">
+                                    <button @click="saveTelegramSettings" :disabled="telegramSettings.loading"
+                                        class="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition font-medium disabled:opacity-50">
+                                        {{ telegramSettings.loading ? '保存中...' : '保存设置' }}
+                                    </button>
+                                    <button @click="testTelegram" :disabled="!telegramStatus.configured"
+                                        class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition font-medium disabled:opacity-50">
+                                        发送测试消息
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Status Card -->
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                            <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30">
+                                <h2 class="font-bold text-gray-800 dark:text-white flex items-center gap-2"><span>📊</span> 连接状态</h2>
+                            </div>
+                            <div class="p-6 space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600 dark:text-gray-300">Webhook</span>
+                                    <span :class="telegramStatus.webhook_set ? 'text-green-500' : 'text-gray-400'">
+                                        {{ telegramStatus.webhook_set ? '✓ 已设置' : '✗ 未设置' }}
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600 dark:text-gray-300">Bot Token</span>
+                                    <span :class="telegramSettings.bot_token ? 'text-green-500' : 'text-gray-400'">
+                                        {{ telegramSettings.bot_token ? '✓ 已配置' : '✗ 未配置' }}
+                                    </span>
+                                </div>
+
+                                <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                    <button @click="setupWebhook" :disabled="!telegramSettings.bot_token || !telegramSettings.webhook_url || telegramSettings.loading"
+                                        class="w-full px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition font-medium disabled:opacity-50">
+                                        设置 Webhook
+                                    </button>
+                                </div>
+
+                                <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                                    <h4 class="font-medium text-blue-800 dark:text-blue-300 mb-2">💡 如何获取 Bot Token</h4>
+                                    <ol class="text-sm text-blue-700 dark:text-blue-400 space-y-1 list-decimal list-inside">
+                                        <li>在 Telegram 搜索 @BotFather</li>
+                                        <li>发送 /newbot 创建新机器人</li>
+                                        <li>复制获得的 Bot Token</li>
+                                        <li>设置 Webhook URL 后即可使用</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Settings Tab -->
                 <div v-if="currentTab === 'settings'" class="animate-fade-in">
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -491,12 +591,16 @@
                     { id: 'usage', name: '用量', icon: '📊' },
                     { id: 'quotas', name: '配额', icon: '📦' },
                     { id: 'quotas', name: '配额', icon: '📦' },
+                    { id: 'telegram', name: 'Telegram', icon: '📱' },
                     { id: 'settings', name: '设置', icon: '⚙️' }
                 ];
 
                 const stats = ref({ tenants: 0, api_keys: 0, requests_today: 0, monthly_cost: '0.00' });
                 const tenants = ref([]);
                 const quotas = ref([]);
+                const telegramSettings = reactive({ bot_token: null, webhook_url: null, allowed_chats: [], loading: false });
+                const telegramStatus = reactive({ configured: false, bot_info: null, webhook_set: false });
+                const telegramAllowedInput = ref("");
                 const api_keys = ref([]);
                 const settings = ref({});
 
@@ -601,11 +705,51 @@
                 const fetchTenants = async () => {
                     try { const res = await axios.get('/api/admin/tenants'); tenants.value = res.data; } catch (e) { showToast('加载租户失败', 'error'); }
                 };
-                                const fetchQuotas = async () => {
+                                                const fetchTelegramSettings = async () => {
+                    try {
+                        const res = await axios.get('/api/admin/telegram/settings');
+                        Object.assign(telegramSettings, res.data);
+                        telegramAllowedInput.value = res.data.allowed_chats?.join(', ') || '';
+                    } catch (e) { console.error('Failed to fetch Telegram settings:', e); }
+                };
+                const fetchTelegramStatus = async () => {
+                    try {
+                        const res = await axios.get('/api/admin/telegram/status');
+                        Object.assign(telegramStatus, res.data);
+                    } catch (e) { console.error('Failed to fetch Telegram status:', e); }
+                };
+                const fetchQuotas = async () => {
                     try { const res = await axios.get('/api/admin/quotas'); quotas.value = res.data; } catch (e) { console.error('Failed to fetch quotas:', e); }
                 };
                 const fetchApiKeys = async () => {
                     try { const res = await axios.get('/api/admin/keys'); api_keys.value = res.data; } catch (e) { console.error('Failed to fetch API keys:', e); }
+                };
+                                const saveTelegramSettings = async () => {
+                    telegramSettings.loading = true;
+                    try {
+                        const chats = telegramAllowedInput.value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+                        await axios.post('/api/admin/telegram/settings', { ...telegramSettings, allowed_chats: chats });
+                        showToast('Telegram 设置已保存', 'success');
+                        fetchTelegramStatus();
+                    } catch (e) { showToast('保存失败: ' + e.message, 'error'); }
+                    finally { telegramSettings.loading = false; }
+                };
+                const setupWebhook = async () => {
+                    telegramSettings.loading = true;
+                    try {
+                        await axios.post('/api/admin/telegram/setup-webhook');
+                        showToast('Webhook 设置成功', 'success');
+                        fetchTelegramStatus();
+                    } catch (e) { showToast('设置失败: ' + e.message, 'error'); }
+                    finally { telegramSettings.loading = false; }
+                };
+                const testTelegram = async () => {
+                    const chatId = prompt('请输入 Chat ID:');
+                    if (!chatId) return;
+                    try {
+                        await axios.post('/api/admin/telegram/test', { chat_id: parseInt(chatId), message: '这是一条测试消息！' });
+                        showToast('测试消息发送成功', 'success');
+                    } catch (e) { showToast('发送失败: ' + e.message, 'error'); }
                 };
                 const saveSettings = async () => {
                     try { await axios.post('/api/admin/settings', settings.value); showToast('设置已保存', 'success'); }
@@ -689,7 +833,7 @@
                 onMounted(() => {
                     if (isDark.value) document.documentElement.classList.add('dark');
                     document.addEventListener('keydown', handleKeydown);
-                    Promise.all([fetchStats(), fetchTenants(), fetchApiKeys(), fetchQuotas()]).finally(() => { loading.value = false; });
+                    Promise.all([fetchStats(), fetchTenants(), fetchApiKeys(), fetchQuotas(), fetchTelegramSettings(), fetchTelegramStatus()]).finally(() => { loading.value = false; });
                     setInterval(fetchStats, 30000);
                 });
 
@@ -701,7 +845,7 @@
                     }
                 });
 
-                return { version, currentTab, tabs, stats, tenants, api_keys, settings, quotas, toasts, showToast, fetchQuotas,
+                return { version, currentTab, tabs, stats, tenants, api_keys, settings, telegramSettings, telegramStatus, telegramAllowedInput, toasts, fetchTelegramSettings, fetchTelegramStatus, saveTelegramSettings, setupWebhook, testTelegram, showToast, fetchQuotas,
                          confirm, cancelConfirm, executeConfirm,
                          tenantModal, openTenantModal, closeTenantModal, submitTenant,
                          keyModal, openKeyModal, closeKeyModal, submitKey,
