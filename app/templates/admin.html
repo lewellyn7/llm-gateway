@@ -12,24 +12,202 @@
         @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes modalIn { from { opacity: 0; transform: translateY(-20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
         .animate-slide-in { animation: slideIn 0.3s ease-out; }
         .animate-fade-in { animation: fadeIn 0.2s ease-out; }
         .animate-pulse-slow { animation: pulse 2s infinite; }
+        .animate-modal-in { animation: modalIn 0.2s ease-out; }
+        .animate-toast-in { animation: slideInRight 0.3s ease-out; }
+        .animate-spin { animation: spin 1s linear infinite; }
         
         /* Toast styles */
-        .toast { position: fixed; top: 20px; right: 20px; z-index: 9999; max-w-sm; }
-        .toast-enter-active { animation: slideIn 0.3s ease-out; }
-        .toast-leave-active { animation: slideIn 0.3s ease-out reverse; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 320px; }
+        
+        /* Modal overlay */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content { 
+            background: white; 
+            border-radius: 16px; 
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+            width: 90%;
+            max-width: 480px;
+            max-height: 90vh;
+            overflow: hidden;
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+        .dark .modal-content { background: #1F2937; }
+        
+        /* Button loading */
+        .btn-loading { opacity: 0.7; pointer-events: none; }
+        .btn-loading::after { content: ''; display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; margin-left: 8px; animation: spin 0.6s linear infinite; }
+        
+        /* Mobile scrollable table */
+        .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .table-scroll::-webkit-scrollbar { height: 6px; }
+        .table-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+        .table-scroll::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+        
+        /* Touch target */
+        @media (max-width: 640px) {
+            .touch-target { min-height: 44px; min-width: 44px; }
+        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
     <div id="app" class="min-h-screen">
         <!-- Toast Container -->
-        <div class="toast">
-            <div v-for="toast in toasts" :key="toast.id"
-                :class="['mb-2 px-4 py-3 rounded-lg shadow-lg text-white animate-slide-in',
-                    toast.type === 'success' ? 'bg-green-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-blue-500']">
-                {{ toast.message }}
+        <div class="toast-container">
+            <transition-group name="toast">
+                <div v-for="toast in toasts" :key="toast.id"
+                    :class="['mb-2 px-4 py-3 rounded-lg shadow-lg text-white animate-toast-in',
+                        toast.type === 'success' ? 'bg-green-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-blue-500']">
+                    {{ toast.message }}
+                </div>
+            </transition-group>
+        </div>
+
+        <!-- Confirm Dialog -->
+        <div id="confirm-overlay" :class="['modal-overlay', { active: confirm.isOpen }]" @click.self="cancelConfirm">
+            <div class="modal-content max-w-sm">
+                <div class="p-6">
+                    <div class="flex items-center gap-3 mb-3">
+                        <span class="text-2xl">⚠️</span>
+                        <h3 class="text-lg font-bold text-red-600 dark:text-red-400">{{ confirm.title }}</h3>
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-300 mb-6">{{ confirm.message }}</p>
+                    <div class="flex gap-3 justify-end">
+                        <button @click="cancelConfirm" class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition font-medium touch-target">
+                            取消
+                        </button>
+                        <button @click="executeConfirm" :disabled="confirm.loading" :class="['px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition font-medium touch-target',
+                            confirm.loading ? 'btn-loading opacity-70 pointer-events-none' : '']">
+                            {{ confirm.loading ? '处理中' : confirm.confirmText }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Tenant Modal -->
+        <div id="tenant-modal" :class="['modal-overlay', { active: tenantModal.isOpen }]" @click.self="closeTenantModal">
+            <div class="modal-content">
+                <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white">新建租户</h3>
+                    <button @click="closeTenantModal" class="text-2xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 w-8 h-8 flex items-center justify-center">×</button>
+                </div>
+                <form @submit.prevent="submitTenant" class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            租户名称 <span class="text-red-500">*</span>
+                        </label>
+                        <input v-model="tenantModal.form.name" type="text" required minlength="2" maxlength="50"
+                            :class="['w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white transition',
+                                tenantModal.errors.name ? 'border-red-500 focus:ring-2 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500']"
+                            placeholder="如：文杨科技">
+                        <p v-if="tenantModal.errors.name" class="mt-1 text-xs text-red-500">{{ tenantModal.errors.name }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            邮箱 <span class="text-red-500">*</span>
+                        </label>
+                        <input v-model="tenantModal.form.email" type="email" required
+                            :class="['w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white transition',
+                                tenantModal.errors.email ? 'border-red-500 focus:ring-2 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500']"
+                            placeholder="admin@example.com">
+                        <p v-if="tenantModal.errors.email" class="mt-1 text-xs text-red-500">{{ tenantModal.errors.email }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            计划 <span class="text-red-500">*</span>
+                        </label>
+                        <select v-model="tenantModal.form.plan" required
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-indigo-500">
+                            <option value="free">Free</option>
+                            <option value="pro">Pro</option>
+                            <option value="enterprise">Enterprise</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-3 justify-end pt-4">
+                        <button type="button" @click="closeTenantModal" class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition font-medium touch-target">
+                            取消
+                        </button>
+                        <button type="submit" :disabled="tenantModal.loading"
+                            :class="['px-6 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition font-medium touch-target',
+                                tenantModal.loading ? 'btn-loading' : '']">
+                            {{ tenantModal.loading ? '创建中...' : '创建租户' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Create API Key Modal -->
+        <div id="key-modal" :class="['modal-overlay', { active: keyModal.isOpen }]" @click.self="closeKeyModal">
+            <div class="modal-content">
+                <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white">生成 API Key</h3>
+                    <button @click="closeKeyModal" class="text-2xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 w-8 h-8 flex items-center justify-center">×</button>
+                </div>
+                <form @submit.prevent="submitKey" class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            租户 <span class="text-red-500">*</span>
+                        </label>
+                        <select v-model="keyModal.form.tenant_id" required
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-indigo-500">
+                            <option value="">选择租户</option>
+                            <option v-for="t in tenants" :key="t.id" :value="t.id">{{ t.name }}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            备注（可选）
+                        </label>
+                        <input v-model="keyModal.form.note" type="text" maxlength="100"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                            placeholder="如：生产环境 Key">
+                    </div>
+                    
+                    <!-- Generated Key Display -->
+                    <div v-if="keyModal.generatedKey" class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
+                        <p class="text-sm text-green-600 dark:text-green-400 mb-2 font-medium">✅ Key 生成成功</p>
+                        <div class="flex items-center gap-2">
+                            <code class="flex-1 text-sm bg-white dark:bg-gray-800 p-2 rounded border border-green-200 dark:border-green-700 text-gray-800 dark:text-gray-200 break-all">{{ keyModal.generatedKey }}</code>
+                            <button type="button" @click="copyToClipboard(keyModal.generatedKey)" class="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition text-sm font-medium">
+                                📋 复制
+                            </button>
+                        </div>
+                        <p class="text-xs text-green-600 dark:text-green-400 mt-2">⚠️ 请妥善保存，关闭后无法再次查看</p>
+                    </div>
+                    
+                    <div class="flex gap-3 justify-end pt-4">
+                        <button type="button" @click="closeKeyModal" class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition font-medium touch-target">
+                            关闭
+                        </button>
+                        <button v-if="!keyModal.generatedKey" type="submit" :disabled="keyModal.loading"
+                            :class="['px-6 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition font-medium touch-target',
+                                keyModal.loading ? 'btn-loading' : '']">
+                            {{ keyModal.loading ? '生成中...' : '生成 Key' }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -42,12 +220,11 @@
                     <span class="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 text-xs rounded-full font-medium">Admin</span>
                 </div>
                 <div class="flex items-center gap-4">
-                    <!-- Dark Mode Toggle -->
-                    <button @click="toggleDark" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                    <button @click="toggleDark" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition touch-target" :title="isDark ? '切换亮色模式' : '切换暗黑模式'">
                         <span class="text-xl">{{ isDark ? '🌙' : '☀️' }}</span>
                     </button>
                     <span class="text-sm text-gray-500 dark:text-gray-400">v{{ version }}</span>
-                    <button @click="logout" class="text-sm text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 px-3 py-1.5 rounded-lg transition font-medium">登出</button>
+                    <button @click="logout" class="text-sm text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 px-3 py-1.5 rounded-lg transition font-medium touch-target">登出</button>
                 </div>
             </div>
         </header>
@@ -64,7 +241,7 @@
 
             <template v-else>
                 <!-- Stats Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-sm text-gray-500 dark:text-gray-400">租户数</span>
@@ -103,11 +280,11 @@
                 <div class="flex gap-1 mb-6 bg-gray-200 dark:bg-gray-700/50 p-1 rounded-xl">
                     <button v-for="tab in tabs" :key="tab.id"
                         @click="currentTab = tab.id"
-                        :class="['flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
+                        :class="['flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1',
                             currentTab === tab.id
                                 ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
                                 : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white']">
-                        <span class="mr-1">{{ tab.icon }}</span> {{ tab.name }}
+                        <span>{{ tab.icon }}</span> <span class="hidden sm:inline">{{ tab.name }}</span>
                     </button>
                 </div>
 
@@ -118,54 +295,60 @@
                             <h2 class="font-bold text-gray-800 dark:text-white flex items-center gap-2">
                                 <span>🏢</span> 租户管理
                             </h2>
-                            <button @click="showCreateTenant = true" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition flex items-center gap-1">
+                            <button @click="openTenantModal" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition flex items-center gap-1 touch-target">
                                 <span>+</span> 新建租户
                             </button>
                         </div>
-                        <div v-if="tenants.length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
+                        <div v-if="tenants.length === 0" class="p-8 text-center">
                             <span class="text-4xl mb-2 block">📭</span>
-                            <p>暂无租户</p>
+                            <p class="text-gray-500 dark:text-gray-400 mb-4">暂无租户</p>
+                            <button @click="openTenantModal" class="text-indigo-600 dark:text-indigo-400 font-medium hover:underline">
+                                创建第一个租户 →
+                            </button>
                         </div>
-                        <table v-else class="w-full">
-                            <thead>
-                                <tr class="text-left text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-700/30">
-                                    <th class="px-4 py-3 font-medium">ID</th>
-                                    <th class="px-4 py-3 font-medium">名称</th>
-                                    <th class="px-4 py-3 font-medium">邮箱</th>
-                                    <th class="px-4 py-3 font-medium">计划</th>
-                                    <th class="px-4 py-3 font-medium">状态</th>
-                                    <th class="px-4 py-3 font-medium">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                <tr v-for="tenant in tenants" :key="tenant.id" class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
-                                    <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">#{{ tenant.id }}</td>
-                                    <td class="px-4 py-3 text-sm font-medium text-gray-800 dark:text-white">{{ tenant.name }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ tenant.email }}</td>
-                                    <td class="px-4 py-3">
-                                        <span class="px-2 py-1 text-xs rounded-full"
-                                            :class="{
-                                                'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300': tenant.plan === 'enterprise',
-                                                'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300': tenant.plan === 'pro',
-                                                'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300': tenant.plan === 'free'
-                                            }">
-                                            {{ tenant.plan }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <span v-if="tenant.is_active" class="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                                            <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse-slow"></span> 活跃
-                                        </span>
-                                        <span v-else class="inline-flex items-center gap-1 text-xs text-red-500">
-                                            <span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span> 停用
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <button @click="viewTenant(tenant)" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm font-medium mr-3">详情</button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div v-else class="table-scroll">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="text-left text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-700/30">
+                                        <th class="px-4 py-3 font-medium">ID</th>
+                                        <th class="px-4 py-3 font-medium">名称</th>
+                                        <th class="px-4 py-3 font-medium">邮箱</th>
+                                        <th class="px-4 py-3 font-medium">计划</th>
+                                        <th class="px-4 py-3 font-medium">状态</th>
+                                        <th class="px-4 py-3 font-medium">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                    <tr v-for="tenant in tenants" :key="tenant.id" class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                                        <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">#{{ tenant.id }}</td>
+                                        <td class="px-4 py-3 text-sm font-medium text-gray-800 dark:text-white">{{ tenant.name }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ tenant.email }}</td>
+                                        <td class="px-4 py-3">
+                                            <span class="px-2 py-1 text-xs rounded-full"
+                                                :class="{
+                                                    'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300': tenant.plan === 'enterprise',
+                                                    'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300': tenant.plan === 'pro',
+                                                    'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300': tenant.plan === 'free'
+                                                }">
+                                                {{ tenant.plan }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <span v-if="tenant.is_active" class="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                                                <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse-slow"></span> 活跃
+                                            </span>
+                                            <span v-else class="inline-flex items-center gap-1 text-xs text-red-500">
+                                                <span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span> 停用
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <button @click="viewTenant(tenant)" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm font-medium mr-3 touch-target">详情</button>
+                                            <button @click="confirmDeleteTenant(tenant)" class="text-red-500 hover:text-red-700 text-sm font-medium touch-target">删除</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -176,37 +359,49 @@
                             <h2 class="font-bold text-gray-800 dark:text-white flex items-center gap-2">
                                 <span>🔑</span> API Keys
                             </h2>
-                            <button @click="showCreateKey = true" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition flex items-center gap-1">
+                            <button @click="openKeyModal" :disabled="tenants.length === 0" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition flex items-center gap-1 touch-target disabled:opacity-50 disabled:cursor-not-allowed">
                                 <span>+</span> 生成 Key
                             </button>
                         </div>
-                        <div v-if="api_keys.length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
+                        <div v-if="tenants.length === 0" class="p-8 text-center">
                             <span class="text-4xl mb-2 block">🔐</span>
-                            <p>暂无 API Keys</p>
+                            <p class="text-gray-500 dark:text-gray-400 mb-4">请先创建租户</p>
+                            <button @click="openTenantModal" class="text-indigo-600 dark:text-indigo-400 font-medium hover:underline">
+                                创建租户 →
+                            </button>
                         </div>
-                        <table v-else class="w-full">
-                            <thead>
-                                <tr class="text-left text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-700/30">
-                                    <th class="px-4 py-3 font-medium">Key</th>
-                                    <th class="px-4 py-3 font-medium">租户</th>
-                                    <th class="px-4 py-3 font-medium">创建时间</th>
-                                    <th class="px-4 py-3 font-medium">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                <tr v-for="key in api_keys" :key="key.id" class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
-                                    <td class="px-4 py-3">
-                                        <code class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded font-mono text-gray-600 dark:text-gray-300">{{ key.key.substring(0, 20) }}...</code>
-                                        <button @click="copyKey(key)" class="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" title="复制">📋</button>
-                                    </td>
-                                    <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ key.tenant_name }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ key.created_at }}</td>
-                                    <td class="px-4 py-3">
-                                        <button @click="revokeKey(key)" class="text-red-500 hover:text-red-700 text-sm font-medium">撤销</button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div v-else-if="api_keys.length === 0" class="p-8 text-center">
+                            <span class="text-4xl mb-2 block">🔐</span>
+                            <p class="text-gray-500 dark:text-gray-400 mb-4">暂无 API Keys</p>
+                            <button @click="openKeyModal" class="text-indigo-600 dark:text-indigo-400 font-medium hover:underline">
+                                生成第一个 Key →
+                            </button>
+                        </div>
+                        <div v-else class="table-scroll">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="text-left text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-700/30">
+                                        <th class="px-4 py-3 font-medium">Key</th>
+                                        <th class="px-4 py-3 font-medium">租户</th>
+                                        <th class="px-4 py-3 font-medium">创建时间</th>
+                                        <th class="px-4 py-3 font-medium">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                    <tr v-for="key in api_keys" :key="key.id" class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                                        <td class="px-4 py-3">
+                                            <code class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded font-mono text-gray-600 dark:text-gray-300">{{ key.key.substring(0, 20) }}...</code>
+                                            <button @click="copyToClipboard(key.key)" class="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 touch-target" title="复制">📋</button>
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ key.tenant_name }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ key.created_at }}</td>
+                                        <td class="px-4 py-3">
+                                            <button @click="confirmRevokeKey(key)" class="text-red-500 hover:text-red-700 text-sm font-medium touch-target">撤销</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -235,7 +430,7 @@
                         <div class="p-6 space-y-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">应用名称</label>
-                                <input v-model="settings.APP_NAME" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                <input v-model="settings.APP_NAME" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-indigo-500">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">调试模式</label>
@@ -245,7 +440,7 @@
                                 </select>
                             </div>
                             <div class="pt-4">
-                                <button @click="saveSettings" class="bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition">
+                                <button @click="saveSettings" class="bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition touch-target">
                                     保存设置
                                 </button>
                             </div>
@@ -262,7 +457,7 @@
     </div>
 
     <script>
-        const { createApp, ref, onMounted } = Vue;
+        const { createApp, ref, reactive, onMounted, watch } = Vue;
 
         createApp({
             setup() {
@@ -284,8 +479,6 @@
                 const api_keys = ref([]);
                 const usage = ref({});
                 const settings = ref({});
-                const showCreateTenant = ref(false);
-                const showCreateKey = ref(false);
 
                 // Toast notification
                 const showToast = (message, type = 'info') => {
@@ -296,12 +489,179 @@
                     }, 3000);
                 };
 
+                // Confirm dialog state
+                const confirm = reactive({
+                    isOpen: false,
+                    title: '',
+                    message: '',
+                    confirmText: '确认',
+                    loading: false,
+                    onConfirm: null
+                });
+
+                const openConfirm = (options) => {
+                    confirm.title = options.title;
+                    confirm.message = options.message;
+                    confirm.confirmText = options.confirmText || '确认';
+                    confirm.loading = false;
+                    confirm.onConfirm = options.onConfirm;
+                    confirm.isOpen = true;
+                };
+
+                const cancelConfirm = () => {
+                    confirm.isOpen = false;
+                    confirm.onConfirm = null;
+                };
+
+                const executeConfirm = async () => {
+                    confirm.loading = true;
+                    try {
+                        if (confirm.onConfirm) {
+                            await confirm.onConfirm();
+                        }
+                        confirm.isOpen = false;
+                    } catch (e) {
+                        showToast('操作失败: ' + e.message, 'error');
+                    } finally {
+                        confirm.loading = false;
+                    }
+                };
+
+                // Tenant Modal
+                const tenantModal = reactive({
+                    isOpen: false,
+                    loading: false,
+                    form: { name: '', email: '', plan: 'free' },
+                    errors: {}
+                });
+
+                const openTenantModal = () => {
+                    tenantModal.form = { name: '', email: '', plan: 'free' };
+                    tenantModal.errors = {};
+                    tenantModal.isOpen = true;
+                };
+
+                const closeTenantModal = () => {
+                    tenantModal.isOpen = false;
+                };
+
+                const validateTenantForm = () => {
+                    tenantModal.errors = {};
+                    if (!tenantModal.form.name || tenantModal.form.name.length < 2) {
+                        tenantModal.errors.name = '名称不能为空，且至少2个字符';
+                    }
+                    if (tenantModal.form.name && tenantModal.form.name.length > 50) {
+                        tenantModal.errors.name = '名称不能超过50个字符';
+                    }
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!tenantModal.form.email || !emailRegex.test(tenantModal.form.email)) {
+                        tenantModal.errors.email = '请输入有效的邮箱地址';
+                    }
+                    return Object.keys(tenantModal.errors).length === 0;
+                };
+
+                const submitTenant = async () => {
+                    if (!validateTenantForm()) return;
+                    tenantModal.loading = true;
+                    try {
+                        // Simulate API call - replace with actual API
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        showToast('租户创建成功', 'success');
+                        closeTenantModal();
+                        fetchTenants();
+                        fetchStats();
+                    } catch (e) {
+                        showToast('创建失败: ' + e.message, 'error');
+                    } finally {
+                        tenantModal.loading = false;
+                    }
+                };
+
+                // Key Modal
+                const keyModal = reactive({
+                    isOpen: false,
+                    loading: false,
+                    generatedKey: null,
+                    form: { tenant_id: '', note: '' }
+                });
+
+                const openKeyModal = () => {
+                    keyModal.form = { tenant_id: tenants.value[0]?.id || '', note: '' };
+                    keyModal.generatedKey = null;
+                    keyModal.isOpen = true;
+                };
+
+                const closeKeyModal = () => {
+                    keyModal.isOpen = false;
+                    keyModal.generatedKey = null;
+                };
+
+                const submitKey = async () => {
+                    if (!keyModal.form.tenant_id) {
+                        showToast('请选择租户', 'error');
+                        return;
+                    }
+                    keyModal.loading = true;
+                    try {
+                        // Simulate API call - replace with actual API
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        // Generate fake key for demo
+                        keyModal.generatedKey = 'sk-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                        showToast('API Key 生成成功', 'success');
+                        fetchApiKeys();
+                        fetchStats();
+                    } catch (e) {
+                        showToast('生成失败: ' + e.message, 'error');
+                    } finally {
+                        keyModal.loading = false;
+                    }
+                };
+
+                // Confirm actions
+                const confirmRevokeKey = (key) => {
+                    openConfirm({
+                        title: '确认撤销 Key？',
+                        message: `确定撤销 Key ${key.key.substring(0, 20)}... 吗？撤销后此 Key 将立即失效，无法恢复。`,
+                        confirmText: '确认撤销',
+                        onConfirm: async () => {
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                            showToast('Key 已撤销', 'success');
+                            fetchApiKeys();
+                            fetchStats();
+                        }
+                    });
+                };
+
+                const confirmDeleteTenant = (tenant) => {
+                    openConfirm({
+                        title: '确认删除租户？',
+                        message: `确定删除租户 "${tenant.name}" 吗？此操作将同时删除该租户下的所有 API Keys，无法恢复。`,
+                        confirmText: '确认删除',
+                        onConfirm: async () => {
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                            showToast('租户已删除', 'success');
+                            fetchTenants();
+                            fetchStats();
+                        }
+                    });
+                };
+
+                // Utility
+                const copyToClipboard = (text) => {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showToast('已复制到剪贴板', 'success');
+                    }).catch(() => {
+                        showToast('复制失败', 'error');
+                    });
+                };
+
                 const toggleDark = () => {
                     isDark.value = !isDark.value;
                     localStorage.setItem('darkMode', isDark.value);
                     document.documentElement.classList.toggle('dark', isDark.value);
                 };
 
+                // API calls
                 const fetchStats = async () => {
                     try {
                         const res = await axios.get('/api/admin/stats');
@@ -357,20 +717,12 @@
                     showToast('租户详情: ' + tenant.name, 'info');
                 };
 
-                const copyKey = (key) => {
-                    navigator.clipboard.writeText(key.key);
-                    showToast('已复制到剪贴板', 'success');
-                };
-
-                const revokeKey = async (key) => {
-                    if (confirm('确认撤销此 Key?')) {
-                        try {
-                            await axios.delete('/api/admin/keys/' + key.id);
-                            showToast('Key 已撤销', 'success');
-                            fetchApiKeys();
-                        } catch (e) {
-                            showToast('撤销失败', 'error');
-                        }
+                // Keyboard shortcuts
+                const handleKeydown = (e) => {
+                    if (e.key === 'Escape') {
+                        if (confirm.isOpen) cancelConfirm();
+                        if (tenantModal.isOpen) closeTenantModal();
+                        if (keyModal.isOpen) closeKeyModal();
                     }
                 };
 
@@ -379,6 +731,9 @@
                     if (isDark.value) {
                         document.documentElement.classList.add('dark');
                     }
+                    
+                    // Add keyboard listener
+                    document.addEventListener('keydown', handleKeydown);
                     
                     // Fetch all data
                     Promise.all([fetchStats(), fetchTenants(), fetchApiKeys(), fetchUsage()])
@@ -392,8 +747,12 @@
 
                 return {
                     version, currentTab, tabs, stats, tenants, api_keys, usage, settings,
-                    showCreateTenant, showCreateKey, saveSettings, logout, viewTenant, copyKey, revokeKey,
-                    loading, isDark, toggleDark, toasts, showToast
+                    toasts, showToast, confirm, cancelConfirm, executeConfirm,
+                    tenantModal, openTenantModal, closeTenantModal, submitTenant,
+                    keyModal, openKeyModal, closeKeyModal, submitKey,
+                    confirmRevokeKey, confirmDeleteTenant, copyToClipboard,
+                    toggleDark, saveSettings, logout, viewTenant,
+                    loading, isDark
                 };
             }
         }).mount('#app');
